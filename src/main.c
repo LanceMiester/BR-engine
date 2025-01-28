@@ -5,8 +5,10 @@
 #include<string.h>
 #include<stdbool.h>
 #include<time.h>
-#define SCREEN_WIDTH 640 // the current screens width
-#define SCREEN_HEIGHT 360 // the current screens height
+// the current screens width
+#define SCREEN_WIDTH 640 
+ // the current screens height
+#define SCREEN_HEIGHT 360
 // making 2d, 3d and 4d vectors
 struct vec4_t{ float x; float y; float z; float w;}; // 4D float vector.
 struct vec3_t{float x; float y; float z;}; // 3D float vector for specific use cases, If not used will be removed
