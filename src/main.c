@@ -9,12 +9,14 @@
 #define SCREEN_WIDTH 640 
  // the current screens height
 #define SCREEN_HEIGHT 360
+
 // making 2d, 3d and 4d vectors
 struct vec4_t{ float x; float y; float z; float w;}; // 4D float vector.
 struct vec3_t{float x; float y; float z;}; // 3D float vector for specific use cases, If not used will be removed
 struct vec3i_t{int x; int y; int z;}; // 3D integer version for specfic use cases
 struct vec2_t{float x; float y;}; // 2D float vector.
-// some variables
+
+// defining some variables
 float s = 0.5f; // speed scalar
 float znear = 0.1f; // z near
 float zfar = 1000.0f; // z far
@@ -25,7 +27,13 @@ float yaw = 1.0f; // yaw in degrees
 struct vec4_t camera; // for calculating the camera position.
 struct vec4_t lookdir = {0,0,1, 1}, upv = {0,1,0,1}; // to calculate where the camera is looking
 SDL_Renderer *rndr; // renderer
-int framecount = 0;
+int framecount = 0; // variable to get current fps
+// function to print 4D vectors for debugging
+void printvec(struct vec4_t v, char *name)
+{
+	printf("%s : X %f | Y %f | Z %f | W %f\n", name,v.x,v.y,v.z,v.w);
+}
+
 // calculate the color based on the luminosity
 int calc_color(float lum, int c[3])
 {
@@ -348,10 +356,10 @@ float objmat_from_file(int rows, char *filename, float matrix[rows][9])
 		// Face data
 		else if(strcmp(str, "f") == 0)
 		{
-		int n1;
-		char *delim = " ";
+				int n1;
+				char *delim = " ";
                 int ffi = 0;
-		char* token;
+				char* token;
                  char *scpy = line;
                 // Get the first token
                 token = strtok(line, delim);
@@ -545,10 +553,7 @@ int draw_object(int rows, int cols, float obj[rows][cols], SDL_Renderer *rnd, fl
 		iter = 0;
 	}
 }
-void printvec(struct vec4_t v, char *name)
-{
-	printf("%s : X %f | Y %f | Z %f | W %f\n", name,v.x,v.y,v.z,v.w);
-}
+
 
 
 
