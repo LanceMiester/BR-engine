@@ -364,20 +364,20 @@ float objmat_from_file(int rows, char *filename, float matrix[rows][9])
                         if(ffi == 0)
                         {
                                 n1 = atoi(token) - 1;
-				face[fi].x = n1;
+								face[fi].x = n1;
                         }
                         else if(ffi == 1)
                         {
                                 n1 = atoi(token) - 1;
-				face[fi].y = n1;
+								face[fi].y = n1;
                         }
                         else if(ffi == 2)
                         {
                                 n1 = atoi(token) - 1;
-                        	face[fi].z = n1;
+                        		face[fi].z = n1;
 				fi++;
 			}
-                        ffi++;
+                ffi++;
                 }
                 token = strtok(NULL, delim);
                 }
@@ -391,11 +391,11 @@ for(int j = 0; j < rows; j++)
 	matrix[j][1] = vec[face[j].x].y;
 	matrix[j][2] = vec[face[j].x].z;
 	matrix[j][3] = vec[face[j].y].x;
-        matrix[j][4] = vec[face[j].y].y;
-        matrix[j][5] = vec[face[j].y].z;
+    matrix[j][4] = vec[face[j].y].y;
+    matrix[j][5] = vec[face[j].y].z;
 	matrix[j][6] = vec[face[j].z].x;
-        matrix[j][7] = vec[face[j].z].y;
-        matrix[j][8] = vec[face[j].z].z;
+    matrix[j][7] = vec[face[j].z].y;
+    matrix[j][8] = vec[face[j].z].z;
 }
 }
 
@@ -472,12 +472,11 @@ int draw_object(int rows, int cols, float obj[rows][cols], SDL_Renderer *rnd, fl
 	float xrot4[4][4] = {{{0.0f}}};
 	mat4_yrot_matrix(yaw, yrot4);
 	mat4_xrot_matrix(pitch, xrot4);
-	//float rot4[4][4];
-	//mat4xmat4(xrot4, yrot4, rot4);
 	// handle yaw and pitch
 	lookdir = mat4_mul_vec4(yrot4, target);
 	lookdir = mat4_mul_vec4(xrot4, lookdir);
-	
+
+
 	// fix for camera tilt
 	upv = mat4_mul_vec4(yrot4, up); 
 	target = vecadd(lookdir, camera);
@@ -594,12 +593,12 @@ struct vec4_t moveside(struct vec4_t target, int d)
 	direction = vecmulfloat(xax, s);
 	if(d == 1)
 	{
-	camera.x -= direction.x;
-	camera.z += direction.z;
+		camera.x -= direction.x;
+		camera.z += direction.z;
 	}else
 	{
-	camera.x += direction.x;
-	camera.z -= direction.z;
+		camera.x += direction.x;
+		camera.z -= direction.z;
 	}
 }
 
@@ -613,17 +612,14 @@ int main(int argc, char *argv[])
 	float matrix[nlines_begin_with(argv[1], "f")][9];
 	objmat_from_file(sizeof(matrix) / sizeof(matrix[0]), argv[1], matrix);
 	int rows = sizeof(matrix) / sizeof(matrix[0]);
-        int cols = sizeof(matrix[0]) / sizeof(matrix[0][0]);
+    int cols = sizeof(matrix[0]) / sizeof(matrix[0][0]);
 	// Initialize all of SDLs Modules and create the Renderer
 	SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_Window *wnd;
 	SDL_Event evn;
-	
 	SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, 0, &wnd, &rndr);
 	// Capture the mouse
-	float sen = 10.0f;
-	int x , y; float xd = 0, yd = 0, zd = 10.0f;
-	SDL_CaptureMouse(SDL_TRUE);
+	int x , y;
 	SDL_GetKeyboardFocus();
 	// create black bg
 	SDL_SetRenderDrawColor(rndr, 0,0,0,0);
@@ -631,8 +627,8 @@ int main(int argc, char *argv[])
 	// define projection matrix
 	float *projmat[4][4] = {{{0}}};
 	mat4_project_matrix(fov, aspr, znear, zfar, projmat);
-	// Get rows and columns of the cube mesh matrix
-	printf("Cols:%d rows:%d\n", cols, rows);
+	// Show how many faces the object has 
+	printf("Faces:%d\n", cols);
 	SDL_ShowCursor(SDL_DISABLE);
 	SDL_WarpMouseGlobal(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
 	//TODO add a function that will generate a bunch of objects from a map file
@@ -645,16 +641,19 @@ int main(int argc, char *argv[])
 		if(SDL_PollEvent(&evn))
 		{
 			if(evn.type == SDL_QUIT) break;
+			// mouse handling
 			if(evn.type == SDL_MOUSEMOTION) 
 			{
 			SDL_GetMouseState(&x,&y);
-			if(x > SCREEN_WIDTH / 2) lookdir.x -=  0.1f;
-			if(x < SCREEN_WIDTH / 2) lookdir.x +=  0.1f;
-			if(y > SCREEN_HEIGHT / 2) lookdir.y -=  0.1f;
-            if(y < SCREEN_HEIGHT / 2) lookdir.y += 0.1f;
+			if(x > SCREEN_WIDTH / 2) yaw -=  0.1f;
+			if(x < SCREEN_WIDTH / 2) yaw +=  0.1f;
+			if(y > SCREEN_HEIGHT / 2) pitch -=  0.1f;
+            if(y < SCREEN_HEIGHT / 2) pitch += 0.1f;
 			
 			SDL_WarpMouseGlobal(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
 			}
+			// TODO: add better keyboard handling
+			// Keyboard handling
 			if(evn.type == SDL_KEYDOWN)
 			{
 			// get the key being pressed
