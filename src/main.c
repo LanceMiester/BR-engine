@@ -852,8 +852,5 @@ int main(int argc, char *argv[])
 	SDL_DestroyWindow(wnd);
 	SDL_Quit();
 	return 0;
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 30f7e30 (Initial Commit)
+
