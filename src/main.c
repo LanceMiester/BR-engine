@@ -139,6 +139,7 @@ struct vec4_t mat4_mul_vec4(float mat4[4][4], struct vec4_t vec)
 	   result.x /= result.w;
 	   result.y /= result.w;
 	   result.z /= result.w;
+	   result.z *= 0.5 + 0.5;
 	}
 	return result;
 }
@@ -424,9 +425,9 @@ bool checkpoints(struct vec4_t n[3], float projmat[4][4])
 	
 	for(int i = 0; i < 3; i++){
 	struct vec4_t b = mat4_mul_vec4(projmat, n[i]);
-	if(b.x >= -1.5f && b.x <= 1.5f)
+	if(b.x >= -1.9f && b.x <= 1.9f)
 	{
-		if(b.y >= -1.5f && b.y <= 1.5f)
+		if(b.y >= -1.9f && b.y <= 1.9f)
 		{
 		 	return true;
 		}
@@ -495,13 +496,9 @@ int draw_object(int rows, int cols, float obj[rows][cols], SDL_Renderer *rnd, fl
 
 
 	// fix for camera tilt
-	upv = mat4_mul_vec4(yrot4, up); 
+	upv = mat4_mul_vec4(xrot4, up); 
 	target = vecadd(lookdir, camera);
-	printvec(target, "target");
-	printvec(vecsub(target, camera), "original target");
-	printvec(upv, "up");
-	printvec(camera, "camera");
-
+	
 	camerahandle(camera, target,upv, viewmatrix);
 
 
@@ -524,6 +521,7 @@ int draw_object(int rows, int cols, float obj[rows][cols], SDL_Renderer *rnd, fl
 			p3d[iter].y = obj[id][i + 1] + goffy + camera.y;
 			p3d[iter].z = obj[id][i + 2] + goffz + camera.z;
 			p3d[iter].w = 1.0f;
+
 			// original position data for normal calculation.
 			p3do[iter].x = obj[id][i] + goffx;
 			p3do[iter].y = obj[id][i + 1] + goffy;
@@ -550,6 +548,7 @@ int draw_object(int rows, int cols, float obj[rows][cols], SDL_Renderer *rnd, fl
 		{
 			// Convert that to 2D space with the projection matrix
 			p3d[i] = mat4_mul_vec4(projmat, p3d[i]);
+			printvec(p3d[i], "projected triangle point");
 			// Scale to monitor so end user can see the rendered object
 			p2d[i].x = p3d[i].x + 1.0f;
 			p2d[i].y = p3d[i].y + 1.0f;
