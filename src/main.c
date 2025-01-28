@@ -13,6 +13,7 @@ struct vec3_t{float x; float y; float z;}; // 3D float vector for specific use c
 struct vec3i_t{int x; int y; int z;}; // 3D integer version for specfic use cases
 struct vec2_t{float x; float y;}; // 2D float vector.
 // some variables
+float s = 0.5f; // speed scalar
 float znear = 0.1f; // z near
 float zfar = 1000.0f; // z far
 float fov = 90.0f; // field of view
@@ -26,28 +27,28 @@ int framecount = 0;
 // calculate the color based on the luminosity
 int calc_color(float lum, int c[3])
 {
-// lit
-if(lum > 0.0f)
-{
- // no processing needed because lighting system is simple
-}
-// some weird middle ground?
-else if(lum == -0.0f)
-{
-// darken colors by 40%
-for(unsigned int i = 0; i < 3; i++)
-{
-        c[i] = c[i] * 0.6f;
-}
-}
-// unlit
-else
-{
-// darken colors by 80%
-for(unsigned int i = 0; i < 3; i++)
-{
-	c[i] = c[i] * 0.2f;
-}
+	// lit
+	if(lum > 0.0f)
+	{
+	 // no processing needed because lighting system is simple
+	}
+	// some weird middle ground?
+	else if(lum == -0.0f)
+	{
+	// darken colors by 40%
+	for(unsigned int i = 0; i < 3; i++)
+	{
+	        c[i] = c[i] * 0.6f;
+	}
+	}
+	// unlit
+	else
+	{
+	// darken colors by 80%
+	for(unsigned int i = 0; i < 3; i++)
+	{
+		c[i] = c[i] * 0.2f;
+	}
 
 }
 
@@ -76,14 +77,13 @@ void mat4_project_matrix(float fov, float asp, float znear, float zfar, float ma
 // creates a y rotation matrix based on a yaw value in degrees
 void mat4_yrot_matrix(float angle, float m[4][4])
 {
-
-		float AngleRad = angle / 180.0f * 3.14159f;
-		m[0][0] = cos(AngleRad);
-		m[0][2] = sin(AngleRad);
-		m[2][0] = -sin(AngleRad);
-		m[1][1] = 1.0f;
-		m[2][2] = cos(AngleRad);
-		m[3][3] = 1.0f;
+	float AngleRad = angle / 180.0f * 3.14159f;
+	m[0][0] = cos(AngleRad);
+	m[0][2] = sin(AngleRad);
+	m[2][0] = -sin(AngleRad);
+	m[1][1] = 1.0f;
+	m[2][2] = cos(AngleRad);
+	m[3][3] = 1.0f;
 }
 // creates a x rotation matrix based on a pitch value in degrees
 void mat4_xrot_matrix(float angle, float m[4][4])
@@ -95,33 +95,33 @@ float AngleRad = angle / 180.0f * 3.14159f;
 # 0 	sin(anglerad) 	  cos(anglerad)		0
 # 0	0		  0			1
 */
-m[0][0] = 1.0f;
-m[1][1] = cos(AngleRad);
-m[1][2] = -sin(AngleRad);
-m[2][1] = sin(AngleRad);
-m[2][2] = cos(AngleRad);
-m[3][3] = 1.0f;
+	m[0][0] = 1.0f;
+	m[1][1] = cos(AngleRad);
+	m[1][2] = -sin(AngleRad);
+	m[2][1] = sin(AngleRad);
+	m[2][2] = cos(AngleRad);
+	m[3][3] = 1.0f;
 }
 
 // Function to do 4x4 * 1x4 matrix multiplication
 struct vec4_t mat4_mul_vec4(float mat4[4][4], struct vec4_t vec)
 {
-struct vec4_t result = {0};
-// first row
-result.x = mat4[0][0] * vec.x + mat4[0][1] * vec.y + mat4[0][2] * vec.z + mat4[0][3] * vec.w;
-// second row
-result.y = mat4[1][0] * vec.x + mat4[1][1] * vec.y + mat4[1][2] * vec.z + mat4[1][3] * vec.w;
-// third row
-result.z = mat4[2][0] * vec.x + mat4[2][1] * vec.y + mat4[2][2] * vec.z + mat4[2][3] * vec.w;
-// fourth row
-result.w = mat4[3][0] * vec.x + mat4[3][1] * vec.y + mat4[3][2] * vec.z + mat4[3][3] * vec.w;
-if(result.w != 0.0)
-{
-   result.x /= result.w;
-   result.y /= result.w;
-   result.z /= result.w;
-}
-return result;
+	struct vec4_t result = {0};
+	// first row
+	result.x = mat4[0][0] * vec.x + mat4[0][1] * vec.y + mat4[0][2] * vec.z + mat4[0][3] * vec.w;
+	// second row
+	result.y = mat4[1][0] * vec.x + mat4[1][1] * vec.y + mat4[1][2] * vec.z + mat4[1][3] * vec.w;
+	// third row
+	result.z = mat4[2][0] * vec.x + mat4[2][1] * vec.y + mat4[2][2] * vec.z + mat4[2][3] * vec.w;
+	// fourth row
+	result.w = mat4[3][0] * vec.x + mat4[3][1] * vec.y + mat4[3][2] * vec.z + mat4[3][3] * vec.w;
+	if(result.w != 0.0)
+	{
+	   result.x /= result.w;
+	   result.y /= result.w;
+	   result.z /= result.w;
+	}
+	return result;
 }
 
 // check how many lines a file has that starts with a character
@@ -152,7 +152,7 @@ int nlines_begin_with(char *filename, char *v)
 // returns a dot product of two vectors
 float dp(struct vec4_t a, struct vec4_t b)
 {
-return a.x * b.x + a.y * b.y + a.z * b.z;
+	return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 // adds two vectors together
 struct vec4_t vecadd(struct vec4_t a, struct vec4_t b)
@@ -171,7 +171,7 @@ struct vec4_t vecmul(struct vec4_t a, struct vec4_t b)
         result.x = a.x * b.x;
         result.y = a.y * b.y;
         result.z = a.z * b.z;
-		result.w = 1;
+	result.w = 1;
         return result;
 }
 // subtracts two vectors
@@ -189,19 +189,19 @@ struct vec4_t normalize(struct vec4_t a)
 {
 	struct vec4_t normalized;
 	float l = sqrtf(a.x*a.x+a.y*a.y+a.z*a.z);
-		normalized.x = a.x / l;
-		normalized.y = a.y / l;
-		normalized.z = a.z / l;
+	normalized.x = a.x / l;
+	normalized.y = a.y / l;
+	normalized.z = a.z / l;
 	return normalized;
 }
 // gets the cross product of 2 vecors
 struct vec4_t cross(struct vec4_t a, struct vec4_t b)
 {
-struct vec4_t cp;
-cp.x = a.y * b.z - a.z * b.y;
-cp.y = a.z * b.x - a.x * b.z;
-cp.z = a.x * b.y - a.y * b.x;
-return cp;
+	struct vec4_t cp;
+	cp.x = a.y * b.z - a.z * b.y;
+	cp.y = a.z * b.x - a.x * b.z;
+	cp.z = a.x * b.y - a.y * b.x;
+	return cp;
 }
 // Calculate normal using Cross Product and line data
 struct vec4_t calc_normal(struct vec4_t points3d[3])
@@ -209,9 +209,9 @@ struct vec4_t calc_normal(struct vec4_t points3d[3])
         struct vec4_t normal, line[2];
         for(unsigned int i = 0; i < 2; i++)
         {
-        line[i].x = points3d[i + 1].x - points3d[0].x;
-        line[i].y = points3d[i + 1].y - points3d[0].y;
-        line[i].z = points3d[i + 1].z - points3d[0].z;
+	        line[i].x = points3d[i + 1].x - points3d[0].x;
+	        line[i].y = points3d[i + 1].y - points3d[0].y;
+	        line[i].z = points3d[i + 1].z - points3d[0].z;
         }
         normal.x = line[0].y * line[1].z - line[0].z * line[1].y;
         normal.y = line[0].z * line[1].x - line[0].x * line[1].z;
@@ -229,30 +229,30 @@ struct vec4_t vecmulfloat(struct vec4_t v, float f)
 // handle the camera movement
 void camerahandle(struct vec4_t cam, struct vec4_t target, struct vec4_t up, float mat4[4][4])
 {
-
-// Look at matrix creation
-// normalize up vector
-up = normalize(up);
-
-// get the forward vector
-struct vec4_t zax = normalize(vecsub(cam, target));
-
-// get the right vector
-struct vec4_t xax = normalize(cross(up, zax));
-
-// Get the up vector
-struct vec4_t yax = cross(zax, xax);
-
-
-// Create view matrix
-
-mat4[0][0] = xax.x; mat4[0][1] = yax.x; mat4[0][2] = zax.x; mat4[0][3] = 0;
- 
-mat4[1][0] = xax.y; mat4[1][1] = yax.y; mat4[1][2] = zax.y; mat4[1][3] = 0;
-
-mat4[2][0] = xax.z; mat4[2][1] = yax.z; mat4[2][2] = zax.z; mat4[2][3] = 0;
-
-mat4[3][0] = -dp(xax, cam); mat4[3][1] = -dp(yax, cam); mat4[3][2] = -dp(zax, cam); mat4[3][3] = 1.0f;
+	
+	// Look at matrix creation
+	// normalize up vector
+	up = normalize(up);
+	
+	// get the forward vector
+	struct vec4_t zax = normalize(vecsub(cam, target));
+	
+	// get the right vector
+	struct vec4_t xax = normalize(cross(up, zax));
+	
+	// Get the up vector
+	struct vec4_t yax = cross(zax, xax);
+	
+	
+	// Create view matrix
+	
+	mat4[0][0] = xax.x; mat4[0][1] = yax.x; mat4[0][2] = zax.x; mat4[0][3] = 0;
+	 
+	mat4[1][0] = xax.y; mat4[1][1] = yax.y; mat4[1][2] = zax.y; mat4[1][3] = 0;
+	
+	mat4[2][0] = xax.z; mat4[2][1] = yax.z; mat4[2][2] = zax.z; mat4[2][3] = 0;
+	
+	mat4[3][0] = -dp(xax, cam); mat4[3][1] = -dp(yax, cam); mat4[3][2] = -dp(zax, cam); mat4[3][3] = 1.0f;
 
 }
 
@@ -305,10 +305,10 @@ float objmat_from_file(int rows, char *filename, float matrix[rows][9])
         }
         while(fgets(line, sizeof(line), objfile))
         {
-/*
-#	Check what character the line starts with to grab vertice or face data
-#	TODO: add more reading features to this function later (color, figuring out whatever S means etc)
-*/
+	/*
+	# Check what character the line starts with to grab vertice or face data
+	# TODO: add more reading features to this function later (color, figuring out whatever S means etc)
+	*/
 	char str[500];
         sprintf(str, "%.1s", line);
 	// vertice
@@ -385,13 +385,13 @@ float objmat_from_file(int rows, char *filename, float matrix[rows][9])
 // use the data we have obtained to populate the object matrix
 for(int j = 0; j < rows; j++)
 {
-		matrix[j][0] = vec[face[j].x].x;
-		matrix[j][1] = vec[face[j].x].y;
-		matrix[j][2] = vec[face[j].x].z;
-		matrix[j][3] = vec[face[j].y].x;
+	matrix[j][0] = vec[face[j].x].x;
+	matrix[j][1] = vec[face[j].x].y;
+	matrix[j][2] = vec[face[j].x].z;
+	matrix[j][3] = vec[face[j].y].x;
         matrix[j][4] = vec[face[j].y].y;
         matrix[j][5] = vec[face[j].y].z;
-		matrix[j][6] = vec[face[j].z].x;
+	matrix[j][6] = vec[face[j].z].x;
         matrix[j][7] = vec[face[j].z].y;
         matrix[j][8] = vec[face[j].z].z;
 }
@@ -409,7 +409,7 @@ bool checkpoints(struct vec4_t n[3], float projmat[4][4])
 	{
 		if(b.y >= -1.5f && b.y <= 1.5f)
 		{
-		 return true;
+		 	return true;
 		}
 	}
 	}
@@ -420,33 +420,34 @@ bool checkpoints(struct vec4_t n[3], float projmat[4][4])
 // draw triangle function
 int draw_triangle(struct vec2_t p1,struct vec2_t p2,struct vec2_t p3, SDL_Renderer *rnd)
 {
-SDL_RenderDrawLine(rnd, p1.x, p1.y, p2.x, p2.y);
-SDL_RenderDrawLine(rnd, p2.x, p2.y, p3.x, p3.y);
-SDL_RenderDrawLine(rnd, p3.x, p3.y, p1.x, p1.y);
+	SDL_RenderDrawLine(rnd, p1.x, p1.y, p2.x, p2.y);
+	SDL_RenderDrawLine(rnd, p2.x, p2.y, p3.x, p3.y);
+	SDL_RenderDrawLine(rnd, p3.x, p3.y, p1.x, p1.y);
 }
 // draw filled triangle function
 int draw_fill_triangle(struct vec2_t p1,struct vec2_t p2,struct vec2_t p3, SDL_Renderer *rnd, SDL_Color scolor, int dbg)
 {
-// Define our variables
-SDL_Vertex vertices[3] =
-{
-{{p1.x, p1.y}, {scolor.r, scolor.g, scolor.b, scolor.a}},
-{{p2.x, p2.y}, {scolor.r, scolor.g, scolor.b, scolor.a}},
-{{p3.x, p3.y}, {scolor.r, scolor.g, scolor.b, scolor.a}}
-};
-// draw the finished result
-// TODO: add make a different rasterization method
-if(dbg == 0){
-if(SDL_RenderGeometry(rnd, NULL, vertices, 3, NULL, 0) != 0)
-{
-printf("Error occured with drawing face");
-return -1;
-}}
-// if debug is on then draw debug triangles
-if(dbg == 1 || dbg == 2){
-SDL_SetRenderDrawColor(rnd, 160,32,240,1);
-draw_triangle(p1, p2, p3, rnd);
-}return 1;
+	// Define our variables
+	SDL_Vertex vertices[3] =
+	{
+	{{p1.x, p1.y}, {scolor.r, scolor.g, scolor.b, scolor.a}},
+	{{p2.x, p2.y}, {scolor.r, scolor.g, scolor.b, scolor.a}},
+	{{p3.x, p3.y}, {scolor.r, scolor.g, scolor.b, scolor.a}}
+	};
+	// draw the finished result
+	// TODO: add make a different rasterization method
+	if(dbg == 0){
+	if(SDL_RenderGeometry(rnd, NULL, vertices, 3, NULL, 0) != 0)
+	{
+	printf("Error occured with drawing face");
+	return -1;
+	}}
+	// if debug is on then draw debug triangles
+	if(dbg == 1 || dbg == 2){
+	SDL_SetRenderDrawColor(rnd, 160,32,240,1);
+	draw_triangle(p1, p2, p3, rnd);
+	}
+	return 1;
 }
 
 struct vec4_t inverse_vector(struct vec4_t a)
@@ -489,65 +490,65 @@ int draw_object(int rows, int cols, float obj[rows][cols], SDL_Renderer *rnd, fl
 	// Position in 2D space
 	struct vec2_t p2d[3];
 
-// position 3D space
-struct vec4_t p3d[3], p3do[3];
-
-// triangle normal data
-struct vec4_t normal;
-// seperate iteration counter for the 2D vec
-int iter = 0;
-for(unsigned int id = 0; id < rows; id++)
-{
-	// Get 3D triangle points
-	for(unsigned int i = 0; i < cols; i += 3)
+	// position 3D space
+	struct vec4_t p3d[3], p3do[3];
+	
+	// triangle normal data
+	struct vec4_t normal;
+	// seperate iteration counter for the 2D vec
+	int iter = 0;
+	for(unsigned int id = 0; id < rows; id++)
 	{
-		p3d[iter].x = obj[id][i] + goffx + camera.x;
-		p3d[iter].y = obj[id][i + 1] + goffy + camera.y;
-		p3d[iter].z = obj[id][i + 2] + goffz + camera.z;
-		p3d[iter].w = 1.0f;
-		// original position data for normal calculation.
-		p3do[iter].x = obj[id][i] + goffx;
-		p3do[iter].y = obj[id][i + 1] + goffy;
-		p3do[iter].z = obj[id][i + 2] + goffz;
-		p3do[iter].w = 1.0f;
-		// apply view matrix
-		p3d[iter] = mat4_mul_vec4(viewmatrix, p3d[iter]);
-		iter++;
+		// Get 3D triangle points
+		for(unsigned int i = 0; i < cols; i += 3)
+		{
+			p3d[iter].x = obj[id][i] + goffx + camera.x;
+			p3d[iter].y = obj[id][i + 1] + goffy + camera.y;
+			p3d[iter].z = obj[id][i + 2] + goffz + camera.z;
+			p3d[iter].w = 1.0f;
+			// original position data for normal calculation.
+			p3do[iter].x = obj[id][i] + goffx;
+			p3do[iter].y = obj[id][i + 1] + goffy;
+			p3do[iter].z = obj[id][i + 2] + goffz;
+			p3do[iter].w = 1.0f;
+			// apply view matrix
+			p3d[iter] = mat4_mul_vec4(viewmatrix, p3d[iter]);
+			iter++;
+		}
+	       
+		// Get normal data
+		struct vec4_t normal = calc_normal(p3do);
+		// check if user can see triangle if true then render triangle
+		if(checkpoints(p3d, projmat) == true && dp(normal, vecadd(target, p3do[0])) <= 0.0f){
+		// basic shading
+		// calculate the luminosity of triangle
+		struct vec4_t ld = {0.0f, -1.0f, 0.0f};
+		ld = normalize(ld);
+		float lum = normal.x * ld.x + normal.y * ld.y + normal.z * ld.z;
+		//printf("Luminosity: %f\n", lum);
+		int cl[3] = {255,255,255};
+		calc_color(lum, cl);
+		for(unsigned int i = 0; i < 3; i++)
+		{
+			// Convert that to 2D space with the projection matrix
+			p3d[i] = mat4_mul_vec4(projmat, p3d[i]);
+			// Scale to monitor so end user can see the rendered object
+			p2d[i].x = p3d[i].x + 1.0f;
+			p2d[i].y = p3d[i].y + 1.0f;
+			p2d[i].x *= 0.5f * SCREEN_WIDTH;
+	        p2d[i].y *= 0.5f * SCREEN_HEIGHT;
+		}
+		SDL_Color color = {cl[0],cl[1],cl[2],0};
+		draw_fill_triangle(p2d[0], p2d[1], p2d[2], rnd, color, 0);
+		}
+		iter = 0;
 	}
-       
-	// Get normal data
-	struct vec4_t normal = calc_normal(p3do);
-	// check if user can see triangle if true then render triangle
-	if(checkpoints(p3d, projmat) == true && dp(normal, vecadd(target, p3do[0])) <= 0.0f){
-	// basic shading
-	// calculate the luminosity of triangle
-	struct vec4_t ld = {0.0f, -1.0f, 0.0f};
-	ld = normalize(ld);
-	float lum = normal.x * ld.x + normal.y * ld.y + normal.z * ld.z;
-	//printf("Luminosity: %f\n", lum);
-	int cl[3] = {255,255,255};
-	calc_color(lum, cl);
-	for(unsigned int i = 0; i < 3; i++)
-	{
-		// Convert that to 2D space with the projection matrix
-		p3d[i] = mat4_mul_vec4(projmat, p3d[i]);
-		// Scale to monitor so end user can see the rendered object
-		p2d[i].x = p3d[i].x + 1.0f;
-		p2d[i].y = p3d[i].y + 1.0f;
-		p2d[i].x *= 0.5f * SCREEN_WIDTH;
-        p2d[i].y *= 0.5f * SCREEN_HEIGHT;
-	}
-	SDL_Color color = {cl[0],cl[1],cl[2],0};
-	draw_fill_triangle(p2d[0], p2d[1], p2d[2], rnd, color, 0);
-	}
-	iter = 0;
-}
 }
 void printvec(struct vec4_t v, char *name)
 {
-printf("%s : X %f | Y %f | Z %f | W %f\n", name,v.x,v.y,v.z,v.w);
+	printf("%s : X %f | Y %f | Z %f | W %f\n", name,v.x,v.y,v.z,v.w);
 }
-float s = 0.5f;
+
 
 
 
@@ -556,48 +557,48 @@ float s = 0.5f;
 // move towards the look direction.
 struct vec4_t MoveTowards(struct vec4_t target)
 {
-struct vec4_t direction = {0.0f,0.0f,0.0f,1};
-// calculate the direction
-direction = vecsub(camera, target);
-direction = normalize(direction);
-// Speed modifier
-direction = vecmulfloat(direction, s);
-
-// move object towards the direction
-camera.x -= direction.x;
-camera.z += direction.z;
+	struct vec4_t direction = {0.0f,0.0f,0.0f,1};
+	// calculate the direction
+	direction = vecsub(camera, target);
+	direction = normalize(direction);
+	// Speed modifier
+	direction = vecmulfloat(direction, s);
+	
+	// move object towards the direction
+	camera.x -= direction.x;
+	camera.z += direction.z;
 }
 // move away from the look direction.
 struct vec4_t MoveAway(struct vec4_t target)
 {
-struct vec4_t direction = {0.0f,0.0f,0.0f,1};
-// calculate the direction
-direction = vecsub(camera, target);
-// Speed modifier
-direction = vecmulfloat(direction, s);
-// move object away from the direction
-camera.x += direction.x;
-camera.z -= direction.z;
-}
+	struct vec4_t direction = {0.0f,0.0f,0.0f,1};
+	// calculate the direction
+	direction = vecsub(camera, target);
+	// Speed modifier
+	direction = vecmulfloat(direction, s);
+	// move object away from the direction
+	camera.x += direction.x;
+	camera.z -= direction.z;
+	}
 // Move to the left or right based on where the user is looking.
 struct vec4_t moveside(struct vec4_t target, int d)
 {
-struct vec4_t direction = {0.0f,0.0f,0.0f,1};
-direction = vecsub(camera, target);
-direction = normalize(direction);
-
-struct vec4_t xax = normalize(cross(upv, direction)); 
-// Speed modifier
-direction = vecmulfloat(xax, s);
-if(d == 1)
-{
-camera.x -= direction.x;
-camera.z += direction.z;
-}else
-{
-camera.x += direction.x;
-camera.z -= direction.z;
-}
+	struct vec4_t direction = {0.0f,0.0f,0.0f,1};
+	direction = vecsub(camera, target);
+	direction = normalize(direction);
+	
+	struct vec4_t xax = normalize(cross(upv, direction)); 
+	// Speed modifier
+	direction = vecmulfloat(xax, s);
+	if(d == 1)
+	{
+	camera.x -= direction.x;
+	camera.z += direction.z;
+	}else
+	{
+	camera.x += direction.x;
+	camera.z -= direction.z;
+	}
 }
 
 int main(int argc, char *argv[])
@@ -743,40 +744,40 @@ int main(int argc, char *argv[])
 
 				// Left
 				 if(left)
-                 {
-                    moveside(vecadd(lookdir, camera), 0);
-                }
+                		 {
+                   			 moveside(vecadd(lookdir, camera), 0);
+                		 }
 				// Right
 				 if(right)
-                 {
+                		 {
  					moveside(vecadd(lookdir, camera), 1);
-                 }
+                 		 }
 				 if(up)
-                                {
+                                 {
                                         camera.y += 0.1f;
-                                }
-				if(down)
-				{
+                                 }
+				 if(down)
+				 {
 					camera.y -= 0.1f;
-				}
+				 }
 				// Left
 				 if(lleft)
-                                {
+                                 {
                                         yaw += 2.0f;
-                                }
+                                 }
 				// Right
 				 if(lright)
-                                {
+                                 {
                                        	yaw -= 2.0f;
-                                }
+                                 }
 				 if(lup)
-                                {
+                                 {
                                         pitch -= 2.0f;
-                                }
-				if(ldown)
-				{
+                                 }
+				 if(ldown)
+				 {
 					pitch += 1.0f;
-				}
+				 }
 
 			}
 			if(evn.type == SDL_KEYUP)
@@ -832,7 +833,7 @@ int main(int argc, char *argv[])
 		}
 		// clear frame
 		SDL_SetRenderDrawColor(rndr, 0,0,0,1);
-        SDL_RenderClear(rndr);
+       		SDL_RenderClear(rndr);
 		// draw new frame
 		draw_object(rows, cols, matrix,rndr,projmat, 1.0f, 1.0f, 3.0f);
 		SDL_RenderPresent(rndr);
