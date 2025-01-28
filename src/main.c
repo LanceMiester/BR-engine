@@ -517,10 +517,6 @@ for(unsigned int id = 0; id < rows; id++)
        
 	// Get normal data
 	struct vec4_t normal = calc_normal(p3do);
-	// gets the triangles normalized device cordinate NDC to calculate if the  triangle is within the viewing range if not do not render
-	struct vec4_t NDC = mat4_mul_vec4(projmat, p3d[0]);
-	//printvec(NDC, "normal NDC");
-
 	// check if user can see triangle if true then render triangle
 	if(checkpoints(p3d, projmat) == true && dp(normal, vecadd(target, p3do[0])) <= 0.0f){
 	// basic shading
