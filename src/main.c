@@ -28,11 +28,20 @@ struct vec4_t camera; // for calculating the camera position.
 struct vec4_t lookdir = {0,0,1, 1}, upv = {0,1,0,1}; // to calculate where the camera is looking
 SDL_Renderer *rndr; // renderer
 int framecount = 0; // variable to get current fps
+
+
+
+
+
+
 // function to print 4D vectors for debugging
 void printvec(struct vec4_t v, char *name)
 {
 	printf("%s : X %f | Y %f | Z %f | W %f\n", name,v.x,v.y,v.z,v.w);
 }
+
+
+
 
 // calculate the color based on the luminosity
 int calc_color(float lum, int c[3])
