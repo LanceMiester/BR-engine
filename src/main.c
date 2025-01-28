@@ -191,7 +191,7 @@ struct vec4_t vecmul(struct vec4_t a, struct vec4_t b)
         result.x = a.x * b.x;
         result.y = a.y * b.y;
         result.z = a.z * b.z;
-	result.w = 1;
+		result.w = 1;
         return result;
 }
 // subtracts two vectors
@@ -425,9 +425,9 @@ bool checkpoints(struct vec4_t n[3], float projmat[4][4])
 	
 	for(int i = 0; i < 3; i++){
 	struct vec4_t b = mat4_mul_vec4(projmat, n[i]);
-	if(b.x >= -1.9f && b.x <= 1.9f)
+	if(b.x >= -1.5f && b.x <= 1.5f)
 	{
-		if(b.y >= -1.9f && b.y <= 1.9f)
+		if(b.y >= -1.5f && b.y <= 1.5f)
 		{
 		 	return true;
 		}
