@@ -691,14 +691,15 @@ struct vec4_t moveside(struct vec4_t target, int d)
 
 int main(int argc, char *argv[])
 {
+	if(argc != 1){
 	bool forward, back, left, right, up, down;
 	bool lleft, lright, lup, ldown;
 	camera.x = 0.0f;
 	camera.y = 0.0f;
 	camera.z = 0.0f;
-	unsigned int faces = mapfaces("./map_files/map1.map");
+	unsigned int faces = mapfaces(argv[1]);
 	struct triangle triangles[faces];
-	readmap(faces, "./map_files/map1.map", triangles);
+	readmap(faces, argv[1], triangles);
 	// Initialize all of SDLs Modules and create the Renderer
 	SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_Window *wnd;
@@ -939,5 +940,6 @@ int main(int argc, char *argv[])
 	SDL_DestroyRenderer(rndr);
 	SDL_DestroyWindow(wnd);
 	SDL_Quit();
+	}else{printf("Please include a map file to load\n");}
 	return 0;
 }
