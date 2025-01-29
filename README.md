@@ -9,6 +9,7 @@ planning to add more features as I go on.
 - [x] Backface culling
 - [x] Camera Movement
 - [x] Simple Lighting
+- [x] map loading
 - [ ] Textures
 - [ ] Make new triangle rasterization method
 - [ ] Reflectons AKA black magic
