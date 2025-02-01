@@ -63,9 +63,9 @@ int SetPixel(SDL_Surface *surface, int x, int y, uint8_t r, uint8_t g, uint8_t b
 	// pixel array
 	uint8_t *pixels = (uint8_t *)surface->pixels;
 	// place the pixel down.
-	pixels[y * surface->pitch + x *  surface->format->BytesPerPixel] = r;
-	pixels[y * surface->pitch + x *  surface->format->BytesPerPixel + 1] = g;
-	pixels[y * surface->pitch + x *  surface->format->BytesPerPixel + 2] = b;
+	pixels[y * surface->pitch + x * surface->format->BytesPerPixel] = r;
+	pixels[y * surface->pitch + x * surface->format->BytesPerPixel + 1] = g;
+	pixels[y * surface->pitch + x * surface->format->BytesPerPixel + 2] = b;
 	// function properly exits
 	return 0;
 }
@@ -87,8 +87,6 @@ int Rasterize_Triangle(SDL_Surface *frame, struct vec4_t p[3], int color[3], flo
 	float min_X = fminf(p[0].x, fminf(p[1].x, p[2].x));
 	float min_Y = fminf(p[0].y, fminf(p[1].y, p[2].y));
 
-
-
 	// define the point
 	struct vec4_t p1;
 
@@ -97,18 +95,18 @@ int Rasterize_Triangle(SDL_Surface *frame, struct vec4_t p[3], int color[3], flo
 	{
 		for (int x = min_X; x < max_X; x++)
 		{
-            if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT)
+			if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT)
 			{
-			p1.y = y;
-			p1.x = x;
-			float ABP = calcedge(p[0], p[1], p1);
-			float BCP = calcedge(p[1], p[2], p1);
-			float CAP = calcedge(p[2], p[0], p1);
-			if (ABP >= 0 && BCP >= 0 && CAP >= 0)
-			{
-				// Draw the pixel
-				SetPixel(frame, (int)x, (int)y, (uint8_t)color[0], (uint8_t)color[1], (uint8_t)color[2]);
-			}
+				p1.y = y;
+				p1.x = x;
+				float ABP = calcedge(p[0], p[1], p1);
+				float BCP = calcedge(p[1], p[2], p1);
+				float CAP = calcedge(p[2], p[0], p1);
+				if (ABP >= 0 && BCP >= 0 && CAP >= 0)
+				{
+					// Draw the pixel
+					SetPixel(frame, (int)x, (int)y, (uint8_t)color[0], (uint8_t)color[1], (uint8_t)color[2]);
+				}
 			}
 		}
 	}
@@ -465,7 +463,6 @@ int handle_triangles(unsigned int faces, SDL_Surface *frame, struct triangle tri
 	camerahandle(camera, target, upv, viewmatrix);
 	struct vec4_t p3d[3];
 	struct vec4_t p3do[3];
-	struct vec2_t p2d[3];
 	// handle triangles
 	for (unsigned int face = 0; face < faces; face++)
 	{
@@ -700,7 +697,7 @@ void readmap(unsigned int faces, char *path, struct triangle tri[faces])
 struct vec4_t MoveTowards(struct vec4_t target)
 {
 	struct vec4_t direction = {0.0f, 0.0f, 1.0f, 1};
-	
+
 	// calculate the direction
 	direction = vecsub(camera, target);
 	// Speed modifier
@@ -714,7 +711,7 @@ struct vec4_t MoveTowards(struct vec4_t target)
 struct vec4_t MoveAway(struct vec4_t target)
 {
 	struct vec4_t direction = {0.0f, 0.0f, 1.0f, 1};
-	
+
 	// calculate the direction
 
 	direction = vecsub(camera, target);
@@ -774,8 +771,8 @@ int main(int argc, char *argv[])
 		float *projmat[4][4] = {{{0}}};
 		mat4_project_matrix(fov, aspr, znear, zfar, projmat);
 		// hide the cursor
-		//SDL_ShowCursor(SDL_DISABLE);
-		//SDL_WarpMouseGlobal(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+		// SDL_ShowCursor(SDL_DISABLE);
+		// SDL_WarpMouseGlobal(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
 		// TODO add delta-time
 		//  Frame and input handler
 		double start_time = time(NULL);
@@ -983,7 +980,7 @@ int main(int argc, char *argv[])
 			}
 			// clear the surface (all pixels are set to black)
 			SDL_FillRect(frame, NULL, SDL_MapRGB(frame->format, 0, 0, 0));
-			
+
 			// draw new frame
 			// lock the surface so we can write to it
 			SDL_LockSurface(frame);
