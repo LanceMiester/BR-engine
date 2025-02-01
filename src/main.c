@@ -40,8 +40,9 @@ struct triangle
 	struct vec4_t p1;
 	struct vec4_t p2;
 	struct vec4_t p3;
-	int id;
-}; // triangle structure to differentiate triangles with ID
+	unsigned int id;
+	bool render;
+}; // triangle structure to differentiate triangles with ID and a boolean to decide whether or not to render it
 
 // defining some variables
 float s = 0.5f;											  // speed scalar
@@ -55,6 +56,66 @@ struct vec4_t camera;									  // for calculating the camera position.
 struct vec4_t lookdir = {0, 0, 1, 1}, upv = {0, 1, 0, 1}; // to calculate where the camera is looking
 SDL_Renderer *rndr;										  // renderer
 int framecount = 0;										  // variable to get current fps
+
+// put a pixel onto the sdl surface
+int SetPixel(SDL_Surface *surface, int x, int y, uint8_t r, uint8_t g, uint8_t b)
+{
+	// pixel array
+	uint8_t *pixels = (uint8_t *)surface->pixels;
+	// place the pixel down.
+	pixels[y * surface->pitch + x *  surface->format->BytesPerPixel] = r;
+	pixels[y * surface->pitch + x *  surface->format->BytesPerPixel + 1] = g;
+	pixels[y * surface->pitch + x *  surface->format->BytesPerPixel + 2] = b;
+	// function properly exits
+	return 0;
+}
+
+float calcedge(struct vec4_t p, struct vec4_t p2, struct vec4_t p3)
+{
+	// calculate the edges of the triangle
+	float edges = (p2.x - p.x) * (p3.y - p.y) - (p2.y - p.y) * (p3.x - p.x);
+	return edges;
+}
+
+// draw a triangle to the SDL surface, include the z-axis as a depth buffer (depth is obtained during projection.)
+int Rasterize_Triangle(SDL_Surface *frame, struct vec4_t p[3], int color[3], float depthbuf[SCREEN_HEIGHT][SCREEN_WIDTH])
+{
+	// get the bounding box of the triangle.
+
+	float max_X = fmaxf(p[0].x, fmaxf(p[1].x, p[2].x));
+	float max_Y = fmaxf(p[0].y, fmaxf(p[1].y, p[2].y));
+	float min_X = fminf(p[0].x, fminf(p[1].x, p[2].x));
+	float min_Y = fminf(p[0].y, fminf(p[1].y, p[2].y));
+
+
+
+	// define the point
+	struct vec4_t p1;
+
+	// rasterize the triangle
+	for (int y = min_Y; y < max_Y; y++)
+	{
+		for (int x = min_X; x < max_X; x++)
+		{
+            if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT)
+			{
+			p1.y = y;
+			p1.x = x;
+			float ABP = calcedge(p[0], p[1], p1);
+			float BCP = calcedge(p[1], p[2], p1);
+			float CAP = calcedge(p[2], p[0], p1);
+			if (ABP >= 0 && BCP >= 0 && CAP >= 0)
+			{
+				// Draw the pixel
+				SetPixel(frame, (int)x, (int)y, (uint8_t)color[0], (uint8_t)color[1], (uint8_t)color[2]);
+			}
+			}
+		}
+	}
+
+	// return 0 on success.
+	return 0;
+}
 
 // function to print 4D vectors for debugging
 void printvec(struct vec4_t v, char *name)
@@ -384,17 +445,10 @@ int draw_fill_triangle(struct vec2_t p1, struct vec2_t p2, struct vec2_t p3, SDL
 	return 1;
 }
 
-struct vec4_t inverse_vector(struct vec4_t a)
-{
-	a.x = -a.x;
-	a.y = -a.y;
-	a.z = -a.z;
-	return a;
-}
-
 // handle the triangles
-int handle_triangles(unsigned int faces, SDL_Renderer *rnd, struct triangle tri[faces], float projmat[4][4])
+int handle_triangles(unsigned int faces, SDL_Surface *frame, struct triangle tri[faces], float depthbuffer[SCREEN_HEIGHT][SCREEN_WIDTH], float projmat[4][4])
 {
+
 	// handle the camera movement
 	float viewmatrix[4][4];
 	struct vec4_t target = {0, 0, 1, 1}, up = {0, 1, 0, 1};
@@ -430,7 +484,7 @@ int handle_triangles(unsigned int faces, SDL_Renderer *rnd, struct triangle tri[
 		// Get normal data
 		struct vec4_t normal = calc_normal(p3do);
 		// check if user can see triangle if true then render triangle
-		if (checkpoints(p3d, projmat) == true && dp(normal, vecadd(target, p3do[0])) <= 0.0f)
+		if (checkpoints(p3d, projmat) == true && dp(normal, vecadd(camera, p3do[0])) <= 0.0f)
 		{
 			// basic shading
 			// calculate the luminosity of triangle
@@ -445,13 +499,12 @@ int handle_triangles(unsigned int faces, SDL_Renderer *rnd, struct triangle tri[
 				// Convert that to 2D space with the projection matrix
 				p3d[i] = mat4_mul_vec4(projmat, p3d[i]);
 				// Scale to monitor so end user can see the rendered object
-				p2d[i].x = p3d[i].x + 1.0f;
-				p2d[i].y = p3d[i].y + 1.0f;
-				p2d[i].x *= 0.5f * SCREEN_WIDTH;
-				p2d[i].y *= 0.5f * SCREEN_HEIGHT;
+				p3d[i].x = p3d[i].x + 1.0f;
+				p3d[i].y = p3d[i].y + 1.0f;
+				p3d[i].x *= 0.5f * SCREEN_WIDTH;
+				p3d[i].y *= 0.5f * SCREEN_HEIGHT;
 			}
-			SDL_Color color = {cl[0], cl[1], cl[2], 0};
-			draw_fill_triangle(p2d[0], p2d[1], p2d[2], rnd, color, 0);
+			Rasterize_Triangle(frame, p3d, cl, depthbuffer);
 		}
 	}
 }
@@ -479,7 +532,6 @@ unsigned int mapfaces(char *path)
 		// read how many faces are in that file
 		n += nlines_begin_with(objectpath, "f");
 	}
-	printf("Faces %d\n", n);
 	return n;
 }
 
@@ -580,6 +632,8 @@ void tri_from_objfile(unsigned int faces, char *path, struct triangle tri[faces]
 		tri[i].p3.x = vec[face[i].z].x;
 		tri[i].p3.y = vec[face[i].z].y;
 		tri[i].p3.z = vec[face[i].z].z;
+		// flag to tell the renderer to render the triangle
+		tri[i].render = true;
 	}
 }
 
@@ -629,12 +683,13 @@ void readmap(unsigned int faces, char *path, struct triangle tri[faces])
 				}
 				goffbuf = strtok(NULL, " ");
 			}
-			// get the objects triangles triangles
+			// get the objects triangles
 			tri_from_objfile(facet, objectpath, tribuf);
 			for (unsigned int i = 0; i < facet; i++)
 			{
 				printf("iter %d | i %d\n", iter, i);
 				tri[iter] = applyoff(tribuf[i], x, y, z);
+				// what triangle is this?
 				iter++;
 			}
 		}
@@ -644,10 +699,10 @@ void readmap(unsigned int faces, char *path, struct triangle tri[faces])
 // move towards the look direction.
 struct vec4_t MoveTowards(struct vec4_t target)
 {
-	struct vec4_t direction = {0.0f, 0.0f, 0.0f, 1};
+	struct vec4_t direction = {0.0f, 0.0f, 1.0f, 1};
+	
 	// calculate the direction
 	direction = vecsub(camera, target);
-	direction = normalize(direction);
 	// Speed modifier
 	direction = vecmulfloat(direction, s);
 
@@ -658,8 +713,10 @@ struct vec4_t MoveTowards(struct vec4_t target)
 // move away from the look direction.
 struct vec4_t MoveAway(struct vec4_t target)
 {
-	struct vec4_t direction = {0.0f, 0.0f, 0.0f, 1};
+	struct vec4_t direction = {0.0f, 0.0f, 1.0f, 1};
+	
 	// calculate the direction
+
 	direction = vecsub(camera, target);
 	// Speed modifier
 	direction = vecmulfloat(direction, s);
@@ -691,255 +748,269 @@ struct vec4_t moveside(struct vec4_t target, int d)
 
 int main(int argc, char *argv[])
 {
-	if(argc != 1){
-	bool forward, back, left, right, up, down;
-	bool lleft, lright, lup, ldown;
-	camera.x = 0.0f;
-	camera.y = 0.0f;
-	camera.z = 0.0f;
-	unsigned int faces = mapfaces(argv[1]);
-	struct triangle triangles[faces];
-	readmap(faces, argv[1], triangles);
-	// Initialize all of SDLs Modules and create the Renderer
-	SDL_Init(SDL_INIT_EVERYTHING);
-	SDL_Window *wnd;
-	SDL_Event evn;
-	SDL_CreateWindowAndRenderer(SCREEN_WIDTH, SCREEN_HEIGHT, 0, &wnd, &rndr);
-	// Capture the mouse
-	int x, y;
-	SDL_GetKeyboardFocus();
-	// create black bg
-	SDL_SetRenderDrawColor(rndr, 0, 0, 0, 0);
-	SDL_RenderClear(rndr);
-	// define projection matrix
-	float *projmat[4][4] = {{{0}}};
-	mat4_project_matrix(fov, aspr, znear, zfar, projmat);
-	// hide the cursor
-	SDL_ShowCursor(SDL_DISABLE);
-	SDL_WarpMouseGlobal(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
-	// TODO add delta-time
-	//  Frame and input handler
-	double start_time = time(NULL);
-	for (;;)
+	if (argc != 1)
 	{
-		mat4_project_matrix(fov, aspr, znear, zfar, projmat);
-		if (SDL_PollEvent(&evn))
-		{
-			if (evn.type == SDL_QUIT)
-				break;
-			// mouse handling
-			if (evn.type == SDL_MOUSEMOTION)
-			{
-				SDL_GetMouseState(&x, &y);
-				if (x > SCREEN_WIDTH / 2)
-					yaw -= 0.1f;
-				if (x < SCREEN_WIDTH / 2)
-					yaw += 0.1f;
-				if (y > SCREEN_HEIGHT / 2)
-					pitch -= 0.1f;
-				if (y < SCREEN_HEIGHT / 2)
-					pitch += 0.1f;
-
-				SDL_WarpMouseGlobal(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
-			}
-			// TODO: add better keyboard handling
-			// Keyboard handling
-			if (evn.type == SDL_KEYDOWN)
-			{
-				// get the key being pressed
-				SDL_Keycode KEY = evn.key.keysym.sym;
-				// fix to handle multiple being pressed
-				if (KEY == SDLK_w)
-				{
-					forward = true;
-				}
-				// Backwards
-				if (KEY == SDLK_s)
-				{
-					back = true;
-				}
-				// Left
-				if (KEY == SDLK_d)
-				{
-					left = true;
-				}
-				// Right
-				if (KEY == SDLK_a)
-				{
-					right = true;
-				}
-				if (KEY == SDLK_SPACE)
-				{
-					up = true;
-				}
-				if (KEY == SDLK_LCTRL)
-				{
-					down = true;
-				}
-				if (KEY == SDLK_LCTRL)
-				{
-					down = true;
-				}
-
-				if (KEY == SDLK_LCTRL)
-				{
-					down = true;
-				}
-				// Left
-				if (KEY == SDLK_LEFT)
-				{
-					lleft = true;
-				}
-				// Right
-				if (KEY == SDLK_RIGHT)
-				{
-					lright = true;
-				}
-				if (KEY == SDLK_UP)
-				{
-					lup = true;
-				}
-				if (KEY == SDLK_DOWN)
-				{
-					ldown = true;
-				}
-
-				if (pitch < -90)
-					pitch = -89.9f;
-				if (pitch > 90)
-					pitch = 89.9f;
-				if (yaw < 0.0f)
-					yaw = 360.0f;
-				if (yaw > 360.0f)
-					yaw = 0.0f;
-
-				if (KEY == SDLK_q)
-				{
-					fov -= 1.0f;
-				}
-				if (KEY == SDLK_e)
-				{
-					fov += 1.0f;
-				}
-
-				// move forward
-				if (forward)
-				{
-					MoveTowards(vecadd(lookdir, camera));
-				}
-				// Backwards
-				if (back)
-				{
-					MoveAway(vecadd(lookdir, camera));
-				}
-
-				// Left
-				if (left)
-				{
-					moveside(vecadd(lookdir, camera), 0);
-				}
-				// Right
-				if (right)
-				{
-					moveside(vecadd(lookdir, camera), 1);
-				}
-				if (up)
-				{
-					camera.y += 0.1f;
-				}
-				if (down)
-				{
-					camera.y -= 0.1f;
-				}
-				// Left
-				if (lleft)
-				{
-					yaw += 2.0f;
-				}
-				// Right
-				if (lright)
-				{
-					yaw -= 2.0f;
-				}
-				if (lup)
-				{
-					pitch -= 2.0f;
-				}
-				if (ldown)
-				{
-					pitch += 1.0f;
-				}
-			}
-			if (evn.type == SDL_KEYUP)
-			{
-				// get the key being pressed
-				SDL_Keycode KEY = evn.key.keysym.sym;
-				if (KEY == SDLK_w)
-				{
-					forward = false;
-				}
-				// Backwards
-				if (KEY == SDLK_s)
-				{
-					back = false;
-				}
-				// Left
-				if (KEY == SDLK_d)
-				{
-					left = false;
-				}
-				// Right
-				if (KEY == SDLK_a)
-				{
-					right = false;
-				}
-				if (KEY == SDLK_SPACE)
-				{
-					up = false;
-				}
-				if (KEY == SDLK_LCTRL)
-				{
-					down = false;
-				}
-				// Left
-				if (KEY == SDLK_LEFT)
-				{
-					lleft = false;
-				}
-				// Right
-				if (KEY == SDLK_RIGHT)
-				{
-					lright = false;
-				}
-				if (KEY == SDLK_UP)
-				{
-					lup = false;
-				}
-				if (KEY == SDLK_DOWN)
-				{
-					ldown = false;
-				}
-			}
-		}
-		// clear frame
-		SDL_SetRenderDrawColor(rndr, 0, 0, 0, 1);
+		bool forward, back, left, right, up, down;
+		bool lleft, lright, lup, ldown;
+		camera.x = 0.0f;
+		camera.y = 0.0f;
+		camera.z = 0.0f;
+		unsigned int faces = mapfaces(argv[1]);
+		struct triangle triangles[faces];
+		readmap(faces, argv[1], triangles);
+		// Initialize all of SDLs Modules and create the Renderer
+		SDL_Init(SDL_INIT_EVERYTHING);
+		SDL_Window *wnd;
+		SDL_Event evn;
+		wnd = SDL_CreateWindow("BR_Engine tests", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+		SDL_Surface *frame = SDL_GetWindowSurface(wnd);
+		// Capture the mouse
+		int x, y;
+		SDL_GetKeyboardFocus();
+		// create black bg
+		SDL_SetRenderDrawColor(rndr, 0, 0, 0, 0);
 		SDL_RenderClear(rndr);
-		// draw new frame
-		// draw_object_mat(rows, cols, matrix, rndr, projmat, 1.0f, 1.0f, 3.0f);
-		handle_triangles(faces, rndr, triangles, projmat);
-		SDL_RenderPresent(rndr);
-		framecount++;
-		double curtime = time(NULL);
-		if (curtime - start_time >= 1.000000)
+		// define projection matrix
+		float *projmat[4][4] = {{{0}}};
+		mat4_project_matrix(fov, aspr, znear, zfar, projmat);
+		// hide the cursor
+		//SDL_ShowCursor(SDL_DISABLE);
+		//SDL_WarpMouseGlobal(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+		// TODO add delta-time
+		//  Frame and input handler
+		double start_time = time(NULL);
+		for (;;)
 		{
-			printf("%d fps \n", framecount);
-			start_time = curtime;
-			framecount = 0;
+			float depthbuf[SCREEN_HEIGHT][SCREEN_WIDTH] = {{{-1.0f}}};
+			mat4_project_matrix(fov, aspr, znear, zfar, projmat);
+			if (SDL_PollEvent(&evn))
+			{
+				if (evn.type == SDL_QUIT)
+					break;
+				// mouse handling
+				if (evn.type == SDL_MOUSEMOTION)
+				{
+					SDL_GetMouseState(&x, &y);
+					if (x > SCREEN_WIDTH / 2)
+						yaw -= 0.1f;
+					if (x < SCREEN_WIDTH / 2)
+						yaw += 0.1f;
+					if (y > SCREEN_HEIGHT / 2)
+						pitch -= 0.1f;
+					if (y < SCREEN_HEIGHT / 2)
+						pitch += 0.1f;
+
+					SDL_WarpMouseGlobal(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+				}
+				// TODO: add better keyboard handling
+				// Keyboard handling
+				if (evn.type == SDL_KEYDOWN)
+				{
+					// get the key being pressed
+					SDL_Keycode KEY = evn.key.keysym.sym;
+					// fix to handle multiple being pressed
+					if (KEY == SDLK_w)
+					{
+						forward = true;
+					}
+					// Backwards
+					if (KEY == SDLK_s)
+					{
+						back = true;
+					}
+					// Left
+					if (KEY == SDLK_d)
+					{
+						left = true;
+					}
+					// Right
+					if (KEY == SDLK_a)
+					{
+						right = true;
+					}
+					if (KEY == SDLK_SPACE)
+					{
+						up = true;
+					}
+					if (KEY == SDLK_LCTRL)
+					{
+						down = true;
+					}
+					if (KEY == SDLK_LCTRL)
+					{
+						down = true;
+					}
+
+					if (KEY == SDLK_LCTRL)
+					{
+						down = true;
+					}
+					// Left
+					if (KEY == SDLK_LEFT)
+					{
+						lleft = true;
+					}
+					// Right
+					if (KEY == SDLK_RIGHT)
+					{
+						lright = true;
+					}
+					if (KEY == SDLK_UP)
+					{
+						lup = true;
+					}
+					if (KEY == SDLK_DOWN)
+					{
+						ldown = true;
+					}
+
+					if (pitch < -90)
+						pitch = -89.9f;
+					if (pitch > 90)
+						pitch = 89.9f;
+					if (yaw < 0.0f)
+						yaw = 360.0f;
+					if (yaw > 360.0f)
+						yaw = 0.0f;
+
+					if (KEY == SDLK_q)
+					{
+						fov -= 1.0f;
+					}
+					if (KEY == SDLK_e)
+					{
+						fov += 1.0f;
+					}
+
+					// move forward
+					if (forward)
+					{
+						MoveTowards(vecadd(lookdir, camera));
+					}
+					// Backwards
+					if (back)
+					{
+						MoveAway(vecadd(lookdir, camera));
+					}
+
+					// Left
+					if (left)
+					{
+						moveside(vecadd(lookdir, camera), 0);
+					}
+					// Right
+					if (right)
+					{
+						moveside(vecadd(lookdir, camera), 1);
+					}
+					if (up)
+					{
+						camera.y += 0.1f;
+					}
+					if (down)
+					{
+						camera.y -= 0.1f;
+					}
+					// Left
+					if (lleft)
+					{
+						yaw += 2.0f;
+					}
+					// Right
+					if (lright)
+					{
+						yaw -= 2.0f;
+					}
+					if (lup)
+					{
+						pitch -= 2.0f;
+					}
+					if (ldown)
+					{
+						pitch += 1.0f;
+					}
+				}
+				if (evn.type == SDL_KEYUP)
+				{
+					// get the key being pressed
+					SDL_Keycode KEY = evn.key.keysym.sym;
+					if (KEY == SDLK_w)
+					{
+						forward = false;
+					}
+					// Backwards
+					if (KEY == SDLK_s)
+					{
+						back = false;
+					}
+					// Left
+					if (KEY == SDLK_d)
+					{
+						left = false;
+					}
+					// Right
+					if (KEY == SDLK_a)
+					{
+						right = false;
+					}
+					if (KEY == SDLK_SPACE)
+					{
+						up = false;
+					}
+					if (KEY == SDLK_LCTRL)
+					{
+						down = false;
+					}
+					// Left
+					if (KEY == SDLK_LEFT)
+					{
+						lleft = false;
+					}
+					// Right
+					if (KEY == SDLK_RIGHT)
+					{
+						lright = false;
+					}
+					if (KEY == SDLK_UP)
+					{
+						lup = false;
+					}
+					if (KEY == SDLK_DOWN)
+					{
+						ldown = false;
+					}
+				}
+			}
+			// clear the surface (all pixels are set to black)
+			SDL_FillRect(frame, NULL, SDL_MapRGB(frame->format, 0, 0, 0));
+			
+			// draw new frame
+			// lock the surface so we can write to it
+			SDL_LockSurface(frame);
+			// rasterize all the triangles
+			handle_triangles(faces, frame, triangles, depthbuf, projmat);
+			// triangles have been drawn to the surface so unlock it
+			SDL_UnlockSurface(frame);
+			// update the frame with new surface data
+			SDL_UpdateWindowSurface(wnd);
+
+			// check how many frames are ran every second
+			framecount++;
+			double curtime = time(NULL);
+			if (curtime - start_time >= 1.000000)
+			{
+				printf("%d fps \n", framecount);
+				start_time = curtime;
+				framecount = 0;
+			}
 		}
+		// SDL_DestroyRenderer(rndr);
+		SDL_DestroyWindow(wnd);
+		SDL_Quit();
 	}
-	SDL_DestroyRenderer(rndr);
-	SDL_DestroyWindow(wnd);
-	SDL_Quit();
-	}else{printf("Please include a map file to load\n");}
+	else
+	{
+		printf("Please include a map file to load\n");
+	}
 	return 0;
 }

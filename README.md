@@ -11,10 +11,10 @@ planning to add more features as I go on.
 - [x] Simple Lighting
 - [x] map loading
 - [ ] Textures
-- [ ] Make new triangle rasterization method
+- [x] Make personal Rasterizer
 - [ ] Reflectons AKA black magic
 - [ ] Advanced lighting
-- [ ] Occlusion culling
+- [ ] Fully implementing the Z-Buffer
 
 
 
