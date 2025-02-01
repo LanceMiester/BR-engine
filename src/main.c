@@ -408,40 +408,7 @@ bool checkpoints(struct vec4_t n[3], float projmat[4][4])
 }
 // Jesus christ
 
-// draw triangle function
-int draw_triangle(struct vec2_t p1, struct vec2_t p2, struct vec2_t p3, SDL_Renderer *rnd)
-{
-	SDL_RenderDrawLine(rnd, p1.x, p1.y, p2.x, p2.y);
-	SDL_RenderDrawLine(rnd, p2.x, p2.y, p3.x, p3.y);
-	SDL_RenderDrawLine(rnd, p3.x, p3.y, p1.x, p1.y);
-}
-// draw filled triangle function
-int draw_fill_triangle(struct vec2_t p1, struct vec2_t p2, struct vec2_t p3, SDL_Renderer *rnd, SDL_Color scolor, int dbg)
-{
-	// Define our variables
-	SDL_Vertex vertices[3] =
-		{
-			{{p1.x, p1.y}, {scolor.r, scolor.g, scolor.b, scolor.a}},
-			{{p2.x, p2.y}, {scolor.r, scolor.g, scolor.b, scolor.a}},
-			{{p3.x, p3.y}, {scolor.r, scolor.g, scolor.b, scolor.a}}};
-	// draw the finished result
-	// TODO: add make a different rasterization method
-	if (dbg == 0)
-	{
-		if (SDL_RenderGeometry(rnd, NULL, vertices, 3, NULL, 0) != 0)
-		{
-			printf("Error occured with drawing face");
-			return -1;
-		}
-	}
-	// if debug is on then draw debug triangles
-	if (dbg == 1 || dbg == 2)
-	{
-		SDL_SetRenderDrawColor(rnd, 160, 32, 240, 1);
-		draw_triangle(p1, p2, p3, rnd);
-	}
-	return 1;
-}
+
 
 // handle the triangles
 int handle_triangles(unsigned int faces, SDL_Surface *frame, struct triangle tri[faces], float depthbuffer[SCREEN_HEIGHT][SCREEN_WIDTH], float projmat[4][4])
