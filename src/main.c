@@ -91,6 +91,8 @@ int Rasterize_Triangle(SDL_Surface *frame, struct vec4_t p[3], int color[3], flo
 	struct vec4_t p1;
 
 	// rasterize the triangle
+
+	// run through the Bounding box of the triangle
 	for (int y = min_Y; y < max_Y; y++)
 	{
 		for (int x = min_X; x < max_X; x++)
@@ -99,6 +101,7 @@ int Rasterize_Triangle(SDL_Surface *frame, struct vec4_t p[3], int color[3], flo
 			{
 				p1.y = y;
 				p1.x = x;
+				// check if the point is in the triangle.
 				float ABP = calcedge(p[0], p[1], p1);
 				float BCP = calcedge(p[1], p[2], p1);
 				float CAP = calcedge(p[2], p[0], p1);
