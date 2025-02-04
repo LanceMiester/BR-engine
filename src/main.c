@@ -5,36 +5,34 @@
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
-// the current screens width
+
 #define SCREEN_WIDTH 640
-// the current screens height
 #define SCREEN_HEIGHT 360
 
-// making 2d, 3d and 4d vectors
 struct vec4_t
 {
 	float x;
 	float y;
 	float z;
 	float w;
-}; // 4D float vector.
+};
 struct vec3_t
 {
 	float x;
 	float y;
 	float z;
-}; // 3D float vector for specific use cases, If not used will be removed
+};
 struct vec3i_t
 {
 	int x;
 	int y;
 	int z;
-}; // 3D integer version for specfic use cases
+};
 struct vec2_t
 {
 	float x;
 	float y;
-}; // 2D float vector.
+};
 struct triangle
 {
 	struct vec4_t p1;
@@ -42,57 +40,45 @@ struct triangle
 	struct vec4_t p3;
 	unsigned int id;
 	bool render;
-}; // triangle structure to differentiate triangles with ID and a boolean to decide whether or not to render it
+};
 
-// defining some variables
-float s = 0.5f;											  // speed scalar
-float znear = 0.1f;										  // z near
-float zfar = 1000.0f;									  // z far
-float fov = 90.0f;										  // field of view
-float aspr = (float)SCREEN_HEIGHT / (float)SCREEN_WIDTH;  // aspect ratio
-float pitch = 1.0f;										  // pitch in degrees
-float yaw = 1.0f;										  // yaw in degrees
-struct vec4_t camera;									  // for calculating the camera position.
-struct vec4_t lookdir = {0, 0, 1, 1}, upv = {0, 1, 0, 1}; // to calculate where the camera is looking
-SDL_Renderer *rndr;										  // renderer
-int framecount = 0;										  // variable to get current fps
+float speed = 0.5f;
+float znear = 0.1f;
+float zfar = 1000.0f;
+float fov = 90.0f;
+float aspr = (float)SCREEN_HEIGHT / (float)SCREEN_WIDTH;
+float pitch = 1.0f; // in degrees
+float yaw = 1.0f;	// in degrees
+struct vec4_t camera;
+struct vec4_t lookdir = {0, 0, 1, 1}, upv = {0, 1, 0, 1};
+int framecount = 0;
 
-// put a pixel onto the sdl surface
 int SetPixel(SDL_Surface *surface, int x, int y, uint8_t r, uint8_t g, uint8_t b)
 {
-	// pixel array
 	uint8_t *pixels = (uint8_t *)surface->pixels;
-	// place the pixel down.
 	pixels[y * surface->pitch + x * surface->format->BytesPerPixel] = r;
 	pixels[y * surface->pitch + x * surface->format->BytesPerPixel + 1] = g;
 	pixels[y * surface->pitch + x * surface->format->BytesPerPixel + 2] = b;
-	// function properly exits
 	return 0;
 }
 
 float calcedge(struct vec4_t p, struct vec4_t p2, struct vec4_t p3)
 {
-	// calculate the edges of the triangle
 	float edges = (p2.x - p.x) * (p3.y - p.y) - (p2.y - p.y) * (p3.x - p.x);
 	return edges;
 }
 
-// draw a triangle to the SDL surface, include the z-axis as a depth buffer (depth is obtained during projection.)
+// should I instead pass in the triangle structure? probably.
 int Rasterize_Triangle(SDL_Surface *frame, struct vec4_t p[3], int color[3], float depthbuf[SCREEN_HEIGHT][SCREEN_WIDTH])
 {
-	// get the bounding box of the triangle.
 
 	float max_X = fmaxf(p[0].x, fmaxf(p[1].x, p[2].x));
 	float max_Y = fmaxf(p[0].y, fmaxf(p[1].y, p[2].y));
 	float min_X = fminf(p[0].x, fminf(p[1].x, p[2].x));
 	float min_Y = fminf(p[0].y, fminf(p[1].y, p[2].y));
 
-	// define the point
 	struct vec4_t p1;
 
-	// rasterize the triangle
-
-	// run through the Bounding box of the triangle
 	for (int y = min_Y; y < max_Y; y++)
 	{
 		for (int x = min_X; x < max_X; x++)
@@ -101,24 +87,20 @@ int Rasterize_Triangle(SDL_Surface *frame, struct vec4_t p[3], int color[3], flo
 			{
 				p1.y = y;
 				p1.x = x;
-				// check if the point is in the triangle.
 				float ABP = calcedge(p[0], p[1], p1);
 				float BCP = calcedge(p[1], p[2], p1);
 				float CAP = calcedge(p[2], p[0], p1);
 				if (ABP >= 0 && BCP >= 0 && CAP >= 0)
 				{
-					// Draw the pixel
 					SetPixel(frame, (int)x, (int)y, (uint8_t)color[0], (uint8_t)color[1], (uint8_t)color[2]);
 				}
 			}
 		}
 	}
 
-	// return 0 on success.
 	return 0;
 }
 
-// function to print 4D vectors for debugging
 void printvec(struct vec4_t v, char *name)
 {
 	printf("%s : X %f | Y %f | Z %f | W %f\n", name, v.x, v.y, v.z, v.w);
@@ -140,37 +122,28 @@ struct triangle applyoff(struct triangle tri1, float x, float y, float z)
 	return tri;
 }
 
-// calculate the color based on the luminosity
 int calc_color(float lum, int c[3])
 {
-	// lit
+
 	if (lum > 0.0f)
 	{
-		// no processing needed because lighting system is simple
 	}
-	// some weird middle ground?
 	else if (lum == -0.0f)
 	{
-		// darken colors by 40%
-		for (unsigned int i = 0; i < 3; i++)
-		{
-			c[i] = c[i] * 0.6f;
-		}
+		c[0] = c[0] * 0.6f;
+		c[1] = c[1] * 0.6f;
+		c[2] = c[2] * 0.6f;
 	}
-	// unlit
 	else
 	{
-		// darken colors by 80%
-		for (unsigned int i = 0; i < 3; i++)
-		{
-			c[i] = c[i] * 0.2f;
-		}
+		c[0] = c[0] * 0.2f;
+		c[1] = c[1] * 0.2f;
+		c[2] = c[2] * 0.2f;
 	}
 
 	return 0;
 }
 
-// projection matrix function
 void mat4_project_matrix(float fov, float asp, float znear, float zfar, float matrix[4][4])
 {
 
@@ -182,7 +155,6 @@ void mat4_project_matrix(float fov, float asp, float znear, float zfar, float ma
 	return;
 }
 
-// creates a y rotation matrix based on a yaw value in degrees
 void mat4_yrot_matrix(float angle, float m[4][4])
 {
 	float AngleRad = angle / 180.0f * 3.14159f;
@@ -193,7 +165,7 @@ void mat4_yrot_matrix(float angle, float m[4][4])
 	m[2][2] = cos(AngleRad);
 	m[3][3] = 1.0f;
 }
-// creates a x rotation matrix based on a pitch value in degrees
+
 void mat4_xrot_matrix(float angle, float m[4][4])
 {
 	float AngleRad = angle / 180.0f * 3.14159f;
@@ -205,17 +177,16 @@ void mat4_xrot_matrix(float angle, float m[4][4])
 	m[3][3] = 1.0f;
 }
 
-// Function to do 4x4 * 1x4 matrix multiplication
 struct vec4_t mat4_mul_vec4(float mat4[4][4], struct vec4_t vec)
 {
 	struct vec4_t result = {0};
-	// first row
+
 	result.x = mat4[0][0] * vec.x + mat4[0][1] * vec.y + mat4[0][2] * vec.z + mat4[0][3] * vec.w;
-	// second row
+
 	result.y = mat4[1][0] * vec.x + mat4[1][1] * vec.y + mat4[1][2] * vec.z + mat4[1][3] * vec.w;
-	// third row
+
 	result.z = mat4[2][0] * vec.x + mat4[2][1] * vec.y + mat4[2][2] * vec.z + mat4[2][3] * vec.w;
-	// fourth row
+
 	result.w = mat4[3][0] * vec.x + mat4[3][1] * vec.y + mat4[3][2] * vec.z + mat4[3][3] * vec.w;
 	if (result.w != 0.0)
 	{
@@ -227,7 +198,6 @@ struct vec4_t mat4_mul_vec4(float mat4[4][4], struct vec4_t vec)
 	return result;
 }
 
-// check how many lines a file has that starts with a character
 unsigned int nlines_begin_with(char *filename, char *v)
 {
 	int n = 0;
@@ -250,13 +220,10 @@ unsigned int nlines_begin_with(char *filename, char *v)
 	return (n);
 }
 
-// math functions
-// returns a dot product of two vectors
 float dp(struct vec4_t a, struct vec4_t b)
 {
 	return a.x * b.x + a.y * b.y + a.z * b.z;
 }
-// adds two vectors together
 struct vec4_t vecadd(struct vec4_t a, struct vec4_t b)
 {
 	struct vec4_t result;
@@ -266,7 +233,6 @@ struct vec4_t vecadd(struct vec4_t a, struct vec4_t b)
 	result.w = 1;
 	return result;
 }
-// multiplies two vectors
 struct vec4_t vecmul(struct vec4_t a, struct vec4_t b)
 {
 	struct vec4_t result;
@@ -276,7 +242,6 @@ struct vec4_t vecmul(struct vec4_t a, struct vec4_t b)
 	result.w = 1;
 	return result;
 }
-// subtracts two vectors
 struct vec4_t vecsub(struct vec4_t a, struct vec4_t b)
 {
 	struct vec4_t result;
@@ -286,7 +251,6 @@ struct vec4_t vecsub(struct vec4_t a, struct vec4_t b)
 	result.w = 1;
 	return result;
 }
-// normalizes a vector
 struct vec4_t normalize(struct vec4_t a)
 {
 	struct vec4_t normalized;
@@ -296,7 +260,6 @@ struct vec4_t normalize(struct vec4_t a)
 	normalized.z = a.z / l;
 	return normalized;
 }
-// gets the cross product of 2 vecors
 struct vec4_t cross(struct vec4_t a, struct vec4_t b)
 {
 	struct vec4_t cp;
@@ -305,7 +268,7 @@ struct vec4_t cross(struct vec4_t a, struct vec4_t b)
 	cp.z = a.x * b.y - a.y * b.x;
 	return cp;
 }
-// Calculate normal using Cross Product and line data
+
 struct vec4_t calc_normal(struct vec4_t points3d[3])
 {
 	struct vec4_t normal, line[2];
@@ -320,31 +283,24 @@ struct vec4_t calc_normal(struct vec4_t points3d[3])
 	normal.z = line[0].x * line[1].y - line[0].y * line[1].x;
 	return (normal);
 }
-// scales a vector with a float value
+
 struct vec4_t vecmulfloat(struct vec4_t v, float f)
 {
 	struct vec4_t a = {v.x * f, v.y * f, v.z * f, 1.0f};
 	return a;
 }
 
-// handle the camera movement
+// uses lookat matrix
 void camerahandle(struct vec4_t cam, struct vec4_t target, struct vec4_t up, float mat4[4][4])
 {
 
-	// Look at matrix creation
-	// normalize up vector
 	up = normalize(up);
 
-	// get the forward vector
 	struct vec4_t zax = normalize(vecsub(cam, target));
 
-	// get the right vector
 	struct vec4_t xax = normalize(cross(up, zax));
 
-	// Get the up vector
 	struct vec4_t yax = cross(zax, xax);
-
-	// Create view matrix
 
 	mat4[0][0] = xax.x;
 	mat4[0][1] = yax.x;
@@ -367,32 +323,27 @@ void camerahandle(struct vec4_t cam, struct vec4_t target, struct vec4_t up, flo
 	mat4[3][3] = 1.0f;
 }
 
-// for loop whats that again?
+// what's a for loop?
 void mat4xmat4(float a[4][4], float b[4][4], float out[4][4])
 {
-	// first row
 	out[0][0] = a[0][0] * b[0][0] + a[1][0] * b[0][1] + a[2][0] * b[0][2] + a[3][0] * b[0][3];
 	out[0][1] = a[0][0] * b[1][0] + a[1][0] * b[1][1] + a[2][0] * b[1][2] + a[3][0] * b[1][3];
 	out[0][2] = a[0][0] * b[2][0] + a[1][0] * b[2][1] + a[2][0] * b[2][2] + a[3][0] * b[2][3];
 	out[0][3] = a[0][0] * b[3][0] + a[1][0] * b[3][1] + a[2][0] * b[3][2] + a[3][0] * b[3][3];
-	// second row
 	out[1][0] = a[0][1] * b[0][0] + a[1][1] * b[0][1] + a[2][1] * b[0][2] + a[3][1] * b[0][3];
 	out[1][1] = a[0][1] * b[1][0] + a[1][1] * b[1][1] + a[2][1] * b[1][2] + a[3][1] * b[1][3];
 	out[1][2] = a[0][1] * b[2][0] + a[1][1] * b[2][1] + a[2][1] * b[2][2] + a[3][1] * b[2][3];
 	out[1][3] = a[0][1] * b[3][0] + a[1][1] * b[3][1] + a[2][1] * b[3][2] + a[3][1] * b[3][3];
-	// third row
 	out[2][0] = a[0][2] * b[0][0] + a[1][2] * b[0][1] + a[2][2] * b[0][2] + a[3][2] * b[0][3];
 	out[2][1] = a[0][2] * b[1][0] + a[1][2] * b[1][1] + a[2][2] * b[1][2] + a[3][2] * b[1][3];
 	out[2][2] = a[0][2] * b[2][0] + a[1][2] * b[2][1] + a[2][2] * b[2][2] + a[3][2] * b[2][3];
 	out[2][3] = a[0][2] * b[3][0] + a[1][2] * b[3][1] + a[2][2] * b[3][2] + a[3][2] * b[3][3];
-	// fourth row
 	out[3][0] = a[0][3] * b[0][0] + a[1][3] * b[0][1] + a[2][3] * b[0][2] + a[3][0] * b[0][3];
 	out[3][1] = a[0][3] * b[1][0] + a[1][3] * b[1][1] + a[2][3] * b[1][2] + a[3][0] * b[1][3];
 	out[3][2] = a[0][3] * b[2][0] + a[1][3] * b[2][1] + a[2][3] * b[2][2] + a[3][0] * b[2][3];
 	out[3][3] = a[0][3] * b[3][0] + a[1][3] * b[3][1] + a[2][3] * b[3][2] + a[3][0] * b[3][3];
 }
 
-// checks the points after they go through a projection matrix to see if they are visible to the user
 bool checkpoints(struct vec4_t n[3], float projmat[4][4])
 {
 
@@ -411,29 +362,25 @@ bool checkpoints(struct vec4_t n[3], float projmat[4][4])
 }
 // Jesus christ
 
-
-
-// handle the triangles
 int handle_triangles(unsigned int faces, SDL_Surface *frame, struct triangle tri[faces], float depthbuffer[SCREEN_HEIGHT][SCREEN_WIDTH], float projmat[4][4])
 {
 
-	// handle the camera movement
 	float viewmatrix[4][4];
 	struct vec4_t target = {0, 0, 1, 1}, up = {0, 1, 0, 1};
 	float yrot4[4][4] = {{{0.0f}}};
 	float xrot4[4][4] = {{{0.0f}}};
 	mat4_yrot_matrix(yaw, yrot4);
 	mat4_xrot_matrix(pitch, xrot4);
-	// handle yaw and pitch
+
 	lookdir = mat4_mul_vec4(yrot4, target);
 	lookdir = mat4_mul_vec4(xrot4, lookdir);
-	// fix for camera tilt
+
 	upv = mat4_mul_vec4(xrot4, up);
 	target = vecadd(lookdir, camera);
 	camerahandle(camera, target, upv, viewmatrix);
 	struct vec4_t p3d[3];
 	struct vec4_t p3do[3];
-	// handle triangles
+
 	for (unsigned int face = 0; face < faces; face++)
 	{
 		// instead of rewriting the entire program to run with the new rendering method, i'll just convert the triangles points into individual 4D vectors to use with the older functions.
@@ -443,29 +390,26 @@ int handle_triangles(unsigned int faces, SDL_Surface *frame, struct triangle tri
 		p3d[1] = mat4_mul_vec4(viewmatrix, p3d[1]);
 		p3d[2] = vecadd(tri[face].p3, camera);
 		p3d[2] = mat4_mul_vec4(viewmatrix, p3d[2]);
-		// original points for calculating the normals and doing lighting calculations
+
 		p3do[0] = tri[face].p1;
 		p3do[1] = tri[face].p2;
 		p3do[2] = tri[face].p3;
 
-		// Get normal data
 		struct vec4_t normal = calc_normal(p3do);
-		// check if user can see triangle if true then render triangle
+
 		if (checkpoints(p3d, projmat) == true && dp(normal, vecadd(camera, p3do[0])) <= 0.0f)
 		{
-			// basic shading
-			// calculate the luminosity of triangle
 			struct vec4_t ld = {0.0f, 5.0f, 0.0f};
 			ld = normalize(ld);
 			float lum = normal.x * ld.x + normal.y * ld.y + normal.z * ld.z;
-			// printf("Luminosity: %f\n", lum);
+
 			int cl[3] = {255, 255, 255};
 			calc_color(lum, cl);
 			for (unsigned int i = 0; i < 3; i++)
 			{
-				// Convert that to 2D space with the projection matrix
+
 				p3d[i] = mat4_mul_vec4(projmat, p3d[i]);
-				// Scale to monitor so end user can see the rendered object
+
 				p3d[i].x = p3d[i].x + 1.0f;
 				p3d[i].y = p3d[i].y + 1.0f;
 				p3d[i].x *= 0.5f * SCREEN_WIDTH;
@@ -476,7 +420,6 @@ int handle_triangles(unsigned int faces, SDL_Surface *frame, struct triangle tri
 	}
 }
 
-// returns the integer value of how many triangles are in a map file
 unsigned int mapfaces(char *path)
 {
 	unsigned int n = 0;
@@ -488,33 +431,25 @@ unsigned int mapfaces(char *path)
 	}
 	while (fgets(line, sizeof(line), file))
 	{
-		// finding the object path
 		char *string = line;
 		char *token;
 		char objectpath[512];
-		// get the first token of the string expected to be "o <objectpath>"
 		token = strtok(string, "|");
-		// format the object path string to remove the "o " from the string
+
 		sprintf(objectpath, "%s", token + 2);
-		// read how many faces are in that file
+
 		n += nlines_begin_with(objectpath, "f");
 	}
 	return n;
 }
 
-// function to read object file and extract the triangles
-// computation needed to calculate how many faces there are inside the object file, suggested function: nlines_begin_with()
 void tri_from_objfile(unsigned int faces, char *path, struct triangle tri[faces])
 {
-	// value of how many vertices there are
 	unsigned int nvec = nlines_begin_with(path, "v");
-	// iterators
 	int vi = 0, fi = 0, vni = 0;
 
-	// Struct arrays for vertices and faces
 	struct vec4_t vec[nvec];
 	struct vec3i_t face[faces];
-	// line buffer
 	char line[500];
 
 	FILE *objfile = fopen(path, "r");
@@ -523,7 +458,6 @@ void tri_from_objfile(unsigned int faces, char *path, struct triangle tri[faces]
 		char *str[2];
 		sprintf(str, "%.1s", line);
 
-		// Vertices
 		if (strcmp(str, "v") == 0)
 		{
 			char *delim = " ";
@@ -552,7 +486,6 @@ void tri_from_objfile(unsigned int faces, char *path, struct triangle tri[faces]
 				token = strtok(NULL, delim);
 			}
 		}
-		// Faces
 		else if (strcmp(str, "f") == 0)
 		{
 			char *delim = " ";
@@ -584,28 +517,22 @@ void tri_from_objfile(unsigned int faces, char *path, struct triangle tri[faces]
 			}
 		}
 	}
-	// populate the triangles with the object data
+
 	for (unsigned int i = 0; i < faces; i++)
 	{
-		// point one
 		tri[i].p1.x = vec[face[i].x].x;
 		tri[i].p1.y = vec[face[i].x].y;
 		tri[i].p1.z = vec[face[i].x].z;
-		// point two
 		tri[i].p2.x = vec[face[i].y].x;
 		tri[i].p2.y = vec[face[i].y].y;
 		tri[i].p2.z = vec[face[i].y].z;
-		// point three
 		tri[i].p3.x = vec[face[i].z].x;
 		tri[i].p3.y = vec[face[i].z].y;
 		tri[i].p3.z = vec[face[i].z].z;
-		// flag to tell the renderer to render the triangle
 		tri[i].render = true;
 	}
 }
 
-// function to read a map file and extract all triangle data from each object
-// computation needed for knowing how many faces are in the map, suggested function: mapfaces()
 void readmap(unsigned int faces, char *path, struct triangle tri[faces])
 {
 	// line buffer
@@ -616,23 +543,17 @@ void readmap(unsigned int faces, char *path, struct triangle tri[faces])
 	{
 		{
 			char objectpath[512];
-			// getting line information
 			char *token;
-			char *linecpy = line;	   // copy of line
-			int facet;				   // how many faces the object has
-			float x = 0, y = 0, z = 0; // triangles global offset
-			// get the first token of the string expected to be "o <objectpath>"
+			char *linecpy = line;
+			int facet;
+			float x = 0, y = 0, z = 0;
 			token = strtok(linecpy, "|");
-			// format the object path string to remove the "o " from the string
 			sprintf(objectpath, "%s", token + 2);
-			// get the faces
 			facet = nlines_begin_with(objectpath, "f");
 			struct triangle tribuf[facet];
-			// get the second token from the token expected to be "g <x> <y> <z>"
 			token = strtok(NULL, "|");
 			char *goffbuf;
 			goffbuf = strtok(token, " ");
-			// get the second token to remove the "g "
 			goffbuf = strtok(NULL, " ");
 			for (unsigned int i = 0; i < 3; i++)
 			{
@@ -650,48 +571,36 @@ void readmap(unsigned int faces, char *path, struct triangle tri[faces])
 				}
 				goffbuf = strtok(NULL, " ");
 			}
-			// get the objects triangles
 			tri_from_objfile(facet, objectpath, tribuf);
 			for (unsigned int i = 0; i < facet; i++)
 			{
 				printf("iter %d | i %d\n", iter, i);
 				tri[iter] = applyoff(tribuf[i], x, y, z);
-				// what triangle is this?
 				iter++;
 			}
 		}
 	}
 }
 
-// move towards the look direction.
 struct vec4_t MoveTowards(struct vec4_t target)
 {
 	struct vec4_t direction = {0.0f, 0.0f, 1.0f, 1};
 
-	// calculate the direction
 	direction = vecsub(camera, target);
-	// Speed modifier
-	direction = vecmulfloat(direction, s);
+	direction = vecmulfloat(direction, speed);
 
-	// move object towards the direction
 	camera.x -= direction.x;
 	camera.z += direction.z;
 }
-// move away from the look direction.
 struct vec4_t MoveAway(struct vec4_t target)
 {
 	struct vec4_t direction = {0.0f, 0.0f, 1.0f, 1};
 
-	// calculate the direction
-
 	direction = vecsub(camera, target);
-	// Speed modifier
-	direction = vecmulfloat(direction, s);
-	// move object away from the direction
+	direction = vecmulfloat(direction, speed);
 	camera.x += direction.x;
 	camera.z -= direction.z;
 }
-// Move to the left or right based on where the user is looking.
 struct vec4_t moveside(struct vec4_t target, int d)
 {
 	struct vec4_t direction = {0.0f, 0.0f, 0.0f, 1};
@@ -700,7 +609,7 @@ struct vec4_t moveside(struct vec4_t target, int d)
 
 	struct vec4_t xax = normalize(cross(upv, direction));
 	// Speed modifier
-	direction = vecmulfloat(xax, s);
+	direction = vecmulfloat(xax, speed);
 	if (d == 1)
 	{
 		camera.x -= direction.x;
@@ -725,24 +634,15 @@ int main(int argc, char *argv[])
 		unsigned int faces = mapfaces(argv[1]);
 		struct triangle triangles[faces];
 		readmap(faces, argv[1], triangles);
-		// Initialize all of SDLs Modules and create the Renderer
 		SDL_Init(SDL_INIT_EVERYTHING);
 		SDL_Window *wnd;
 		SDL_Event evn;
 		wnd = SDL_CreateWindow("BR_Engine tests", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 		SDL_Surface *frame = SDL_GetWindowSurface(wnd);
-		// Capture the mouse
 		int x, y;
 		SDL_GetKeyboardFocus();
-		// create black bg
-		SDL_SetRenderDrawColor(rndr, 0, 0, 0, 0);
-		SDL_RenderClear(rndr);
-		// define projection matrix
 		float *projmat[4][4] = {{{0}}};
 		mat4_project_matrix(fov, aspr, znear, zfar, projmat);
-		// hide the cursor
-		// SDL_ShowCursor(SDL_DISABLE);
-		// SDL_WarpMouseGlobal(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
 		// TODO add delta-time
 		//  Frame and input handler
 		double start_time = time(NULL);
@@ -754,43 +654,24 @@ int main(int argc, char *argv[])
 			{
 				if (evn.type == SDL_QUIT)
 					break;
-				// mouse handling
-				if (evn.type == SDL_MOUSEMOTION)
-				{
-					SDL_GetMouseState(&x, &y);
-					if (x > SCREEN_WIDTH / 2)
-						yaw -= 0.1f;
-					if (x < SCREEN_WIDTH / 2)
-						yaw += 0.1f;
-					if (y > SCREEN_HEIGHT / 2)
-						pitch -= 0.1f;
-					if (y < SCREEN_HEIGHT / 2)
-						pitch += 0.1f;
-
-					SDL_WarpMouseGlobal(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
-				}
 				// TODO: add better keyboard handling
 				// Keyboard handling
 				if (evn.type == SDL_KEYDOWN)
 				{
-					// get the key being pressed
 					SDL_Keycode KEY = evn.key.keysym.sym;
 					// fix to handle multiple being pressed
 					if (KEY == SDLK_w)
 					{
 						forward = true;
 					}
-					// Backwards
 					if (KEY == SDLK_s)
 					{
 						back = true;
 					}
-					// Left
 					if (KEY == SDLK_d)
 					{
 						left = true;
 					}
-					// Right
 					if (KEY == SDLK_a)
 					{
 						right = true;
@@ -812,12 +693,10 @@ int main(int argc, char *argv[])
 					{
 						down = true;
 					}
-					// Left
 					if (KEY == SDLK_LEFT)
 					{
 						lleft = true;
 					}
-					// Right
 					if (KEY == SDLK_RIGHT)
 					{
 						lright = true;
@@ -849,23 +728,20 @@ int main(int argc, char *argv[])
 						fov += 1.0f;
 					}
 
-					// move forward
 					if (forward)
 					{
 						MoveTowards(vecadd(lookdir, camera));
 					}
-					// Backwards
 					if (back)
 					{
 						MoveAway(vecadd(lookdir, camera));
 					}
 
-					// Left
 					if (left)
 					{
 						moveside(vecadd(lookdir, camera), 0);
 					}
-					// Right
+
 					if (right)
 					{
 						moveside(vecadd(lookdir, camera), 1);
@@ -878,12 +754,12 @@ int main(int argc, char *argv[])
 					{
 						camera.y -= 0.1f;
 					}
-					// Left
+
 					if (lleft)
 					{
 						yaw += 2.0f;
 					}
-					// Right
+
 					if (lright)
 					{
 						yaw -= 2.0f;
@@ -899,23 +775,23 @@ int main(int argc, char *argv[])
 				}
 				if (evn.type == SDL_KEYUP)
 				{
-					// get the key being pressed
+
 					SDL_Keycode KEY = evn.key.keysym.sym;
 					if (KEY == SDLK_w)
 					{
 						forward = false;
 					}
-					// Backwards
+
 					if (KEY == SDLK_s)
 					{
 						back = false;
 					}
-					// Left
+
 					if (KEY == SDLK_d)
 					{
 						left = false;
 					}
-					// Right
+
 					if (KEY == SDLK_a)
 					{
 						right = false;
@@ -928,12 +804,12 @@ int main(int argc, char *argv[])
 					{
 						down = false;
 					}
-					// Left
+
 					if (KEY == SDLK_LEFT)
 					{
 						lleft = false;
 					}
-					// Right
+
 					if (KEY == SDLK_RIGHT)
 					{
 						lright = false;
@@ -948,20 +824,17 @@ int main(int argc, char *argv[])
 					}
 				}
 			}
-			// clear the surface (all pixels are set to black)
+
 			SDL_FillRect(frame, NULL, SDL_MapRGB(frame->format, 0, 0, 0));
 
-			// draw new frame
-			// lock the surface so we can write to it
 			SDL_LockSurface(frame);
-			// rasterize all the triangles
+
 			handle_triangles(faces, frame, triangles, depthbuf, projmat);
-			// triangles have been drawn to the surface so unlock it
+
 			SDL_UnlockSurface(frame);
-			// update the frame with new surface data
+
 			SDL_UpdateWindowSurface(wnd);
 
-			// check how many frames are ran every second
 			framecount++;
 			double curtime = time(NULL);
 			if (curtime - start_time >= 1.000000)
@@ -971,7 +844,7 @@ int main(int argc, char *argv[])
 				framecount = 0;
 			}
 		}
-		// SDL_DestroyRenderer(rndr);
+
 		SDL_DestroyWindow(wnd);
 		SDL_Quit();
 	}
