@@ -10,11 +10,13 @@ planning to add more features as I go on.
 - [x] Camera Movement
 - [x] Simple Lighting
 - [x] map loading
-- [ ] Textures
+- [x] Fully implementing the Z-Buffer
 - [x] Make personal Rasterizer
+- [ ] Textures
 - [ ] Reflectons AKA black magic
 - [ ] Advanced lighting
-- [ ] Fully implementing the Z-Buffer
+- [ ] Optimize this terrible code
+
 
 
 

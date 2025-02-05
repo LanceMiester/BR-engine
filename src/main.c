@@ -52,7 +52,6 @@ float yaw = 1.0f;	// in degrees
 struct vec4_t camera;
 struct vec4_t lookdir = {0, 0, 1, 1}, upv = {0, 1, 0, 1};
 int framecount = 0;
-
 int SetPixel(SDL_Surface *surface, int x, int y, uint8_t r, uint8_t g, uint8_t b)
 {
 	uint8_t *pixels = (uint8_t *)surface->pixels;
@@ -87,13 +86,28 @@ int Rasterize_Triangle(SDL_Surface *frame, struct vec4_t p[3], int color[3], flo
 			{
 				p1.y = y;
 				p1.x = x;
+				float ABC = calcedge(p[0], p[1], p[2]);
 				float ABP = calcedge(p[0], p[1], p1);
 				float BCP = calcedge(p[1], p[2], p1);
 				float CAP = calcedge(p[2], p[0], p1);
+				
 				if (ABP >= 0 && BCP >= 0 && CAP >= 0)
 				{
+					// the sum of these should always be 1.
+					float weight1 = BCP / ABC, weight2 = CAP / ABC, weight3 = ABP / ABC;
+					float depth = weight1 * p[0].z + weight2 * p[1].z + weight3 * p[2].z;
+					if(depthbuf[(int)y][(int)x] > depth)
+					{
 					SetPixel(frame, (int)x, (int)y, (uint8_t)color[0], (uint8_t)color[1], (uint8_t)color[2]);
+					depthbuf[(int)y][(int)x] = depth;
+					}
+					else if(depthbuf[(int)y][(int)x] < 0.02f)
+					{
+					SetPixel(frame, (int)x, (int)y, (uint8_t)color[0], (uint8_t)color[1], (uint8_t)color[2]);
+					depthbuf[(int)y][(int)x] = depth;
+					}
 				}
+
 			}
 		}
 	}
@@ -346,15 +360,14 @@ void mat4xmat4(float a[4][4], float b[4][4], float out[4][4])
 
 bool checkpoints(struct vec4_t n[3], float projmat[4][4])
 {
-
 	for (int i = 0; i < 3; i++)
 	{
 		struct vec4_t b = mat4_mul_vec4(projmat, n[i]);
-		if (b.x >= -1.5f && b.x <= 1.5f)
+		if (b.x >= -1.2f && b.x <= 1.2f)
 		{
-			if (b.y >= -1.5f && b.y <= 1.5f)
+			if (b.y >= -1.2f && b.y <= 1.2f)
 			{
-				return true;
+				if(b.z >= 0.2f) return true;
 			}
 		}
 	}
@@ -645,10 +658,12 @@ int main(int argc, char *argv[])
 		mat4_project_matrix(fov, aspr, znear, zfar, projmat);
 		// TODO add delta-time
 		//  Frame and input handler
+		printf("Triangles %d", sizeof(triangles) / sizeof(triangles[0]));
+
 		double start_time = time(NULL);
 		for (;;)
 		{
-			float depthbuf[SCREEN_HEIGHT][SCREEN_WIDTH] = {{{-1.0f}}};
+			float depthbuf[SCREEN_HEIGHT][SCREEN_WIDTH] = {5.0};
 			mat4_project_matrix(fov, aspr, znear, zfar, projmat);
 			if (SDL_PollEvent(&evn))
 			{
@@ -826,7 +841,6 @@ int main(int argc, char *argv[])
 			}
 
 			SDL_FillRect(frame, NULL, SDL_MapRGB(frame->format, 0, 0, 0));
-
 			SDL_LockSurface(frame);
 
 			handle_triangles(faces, frame, triangles, depthbuf, projmat);
