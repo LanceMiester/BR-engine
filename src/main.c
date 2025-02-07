@@ -8,50 +8,56 @@
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 360
-
-struct vec4_t
+#define MAX_OBJ 2000
+typedef struct
 {
 	float x;
 	float y;
 	float z;
 	float w;
-};
-struct vec3_t
+} vec4_t;
+typedef struct
 {
 	float x;
 	float y;
 	float z;
-};
-struct vec3i_t
+} vec3_t;
+typedef struct
 {
 	int x;
 	int y;
 	int z;
-};
-struct vec2_t
+} vec3i_t;
+typedef struct
 {
 	float x;
 	float y;
-};
-struct triangle
+} vec2_t;
+typedef struct
 {
-	struct vec4_t p1;
-	struct vec4_t p2;
-	struct vec4_t p3;
-	unsigned int id;
-	bool render;
-};
+	vec4_t p1;
+	vec4_t p2;
+	vec4_t p3;
+} triangle_t;
+typedef struct
+{
+	triangle_t *faces;
+	int ifaces;
+	int *flags;
+} object_t;
 
 float speed = 0.5f;
 float znear = 0.1f;
 float zfar = 1000.0f;
 float fov = 90.0f;
 float aspr = (float)SCREEN_HEIGHT / (float)SCREEN_WIDTH;
-float pitch = 1.0f; // in degrees
-float yaw = 1.0f;	// in degrees
-struct vec4_t camera;
-struct vec4_t lookdir = {0, 0, 1, 1}, upv = {0, 1, 0, 1};
+float pitch = 0.0f; // in degrees
+float yaw = 0.0f;	// in degrees
+bool force_exit = false;
+vec4_t camera;
+vec4_t lookdir = {0, 0, 1, 1}, upv = {0, 1, 0, 1};
 int framecount = 0;
+int objn = 0;
 int SetPixel(SDL_Surface *surface, int x, int y, uint8_t r, uint8_t g, uint8_t b)
 {
 	uint8_t *pixels = (uint8_t *)surface->pixels;
@@ -61,14 +67,14 @@ int SetPixel(SDL_Surface *surface, int x, int y, uint8_t r, uint8_t g, uint8_t b
 	return 0;
 }
 
-float calcedge(struct vec4_t p, struct vec4_t p2, struct vec4_t p3)
+float calcedge(vec4_t p, vec4_t p2, vec4_t p3)
 {
 	float edges = (p2.x - p.x) * (p3.y - p.y) - (p2.y - p.y) * (p3.x - p.x);
 	return edges;
 }
 
 // should I instead pass in the triangle structure? probably.
-int Rasterize_Triangle(SDL_Surface *frame, struct vec4_t p[3], int color[3], float depthbuf[SCREEN_HEIGHT][SCREEN_WIDTH])
+int Rasterize_Triangle(SDL_Surface *frame, vec4_t p[3], uint8_t color[3], float depthbuf[SCREEN_HEIGHT][SCREEN_WIDTH])
 {
 
 	float max_X = fmaxf(p[0].x, fmaxf(p[1].x, p[2].x));
@@ -76,7 +82,7 @@ int Rasterize_Triangle(SDL_Surface *frame, struct vec4_t p[3], int color[3], flo
 	float min_X = fminf(p[0].x, fminf(p[1].x, p[2].x));
 	float min_Y = fminf(p[0].y, fminf(p[1].y, p[2].y));
 
-	struct vec4_t p1;
+	vec4_t p1;
 
 	for (int y = min_Y; y < max_Y; y++)
 	{
@@ -90,24 +96,23 @@ int Rasterize_Triangle(SDL_Surface *frame, struct vec4_t p[3], int color[3], flo
 				float ABP = calcedge(p[0], p[1], p1);
 				float BCP = calcedge(p[1], p[2], p1);
 				float CAP = calcedge(p[2], p[0], p1);
-				
+
 				if (ABP >= 0 && BCP >= 0 && CAP >= 0)
 				{
 					// the sum of these should always be 1.
 					float weight1 = BCP / ABC, weight2 = CAP / ABC, weight3 = ABP / ABC;
 					float depth = weight1 * p[0].z + weight2 * p[1].z + weight3 * p[2].z;
-					if(depthbuf[(int)y][(int)x] > depth)
+					if (depthbuf[y][x] > depth)
 					{
-					SetPixel(frame, (int)x, (int)y, (uint8_t)color[0], (uint8_t)color[1], (uint8_t)color[2]);
-					depthbuf[(int)y][(int)x] = depth;
+						SetPixel(frame, x, y, color[0], color[1], color[2]);
+						depthbuf[y][x] = depth;
 					}
-					else if(depthbuf[(int)y][(int)x] < 0.02f)
+					else if (depthbuf[y][x] < 0.02f)
 					{
-					SetPixel(frame, (int)x, (int)y, (uint8_t)color[0], (uint8_t)color[1], (uint8_t)color[2]);
-					depthbuf[(int)y][(int)x] = depth;
+						SetPixel(frame, x, y, color[0], color[1], color[2]);
+						depthbuf[y][x] = depth;
 					}
 				}
-
 			}
 		}
 	}
@@ -115,15 +120,15 @@ int Rasterize_Triangle(SDL_Surface *frame, struct vec4_t p[3], int color[3], flo
 	return 0;
 }
 
-void printvec(struct vec4_t v, char *name)
+void printvec(vec4_t v, char *name)
 {
 	printf("%s : X %f | Y %f | Z %f | W %f\n", name, v.x, v.y, v.z, v.w);
 }
 
-// function to apply an offset to a triangle
-struct triangle applyoff(struct triangle tri1, float x, float y, float z)
+// function to apply an offset to a triangle_t
+triangle_t applyoff(triangle_t tri1, float x, float y, float z)
 {
-	struct triangle tri;
+	triangle_t tri;
 	tri.p1.x = x + tri1.p1.x;
 	tri.p1.y = y + tri1.p1.y;
 	tri.p1.z = z + tri1.p1.z;
@@ -136,7 +141,7 @@ struct triangle applyoff(struct triangle tri1, float x, float y, float z)
 	return tri;
 }
 
-int calc_color(float lum, int c[3])
+int calc_color(float lum, uint8_t c[3])
 {
 
 	if (lum > 0.0f)
@@ -191,9 +196,9 @@ void mat4_xrot_matrix(float angle, float m[4][4])
 	m[3][3] = 1.0f;
 }
 
-struct vec4_t mat4_mul_vec4(float mat4[4][4], struct vec4_t vec)
+vec4_t mat4_mul_vec4(float mat4[4][4], vec4_t vec)
 {
-	struct vec4_t result = {0};
+	vec4_t result = {0};
 
 	result.x = mat4[0][0] * vec.x + mat4[0][1] * vec.y + mat4[0][2] * vec.z + mat4[0][3] * vec.w;
 
@@ -212,80 +217,58 @@ struct vec4_t mat4_mul_vec4(float mat4[4][4], struct vec4_t vec)
 	return result;
 }
 
-unsigned int nlines_begin_with(char *filename, char *v)
-{
-	int n = 0;
-	char line[500];
-	FILE *file = fopen(filename, "r");
-	if (file == NULL)
-	{
-		return 1;
-	}
-	while (fgets(line, sizeof(line), file))
-	{
-		char string[500];
-		sprintf(string, "%.1s", line);
-		if (strcmp(string, v) == 0)
-		{
-			n++;
-		}
-	}
-	printf("%d\n", n);
-	return (n);
-}
-
-float dp(struct vec4_t a, struct vec4_t b)
+float dot(vec4_t a, vec4_t b)
 {
 	return a.x * b.x + a.y * b.y + a.z * b.z;
 }
-struct vec4_t vecadd(struct vec4_t a, struct vec4_t b)
+vec4_t vecadd(vec4_t a, vec4_t b)
 {
-	struct vec4_t result;
+	vec4_t result;
 	result.x = a.x + b.x;
 	result.y = a.y + b.y;
 	result.z = a.z + b.z;
 	result.w = 1;
 	return result;
 }
-struct vec4_t vecmul(struct vec4_t a, struct vec4_t b)
+vec4_t vecmul(vec4_t a, vec4_t b)
 {
-	struct vec4_t result;
+	vec4_t result;
 	result.x = a.x * b.x;
 	result.y = a.y * b.y;
 	result.z = a.z * b.z;
 	result.w = 1;
 	return result;
 }
-struct vec4_t vecsub(struct vec4_t a, struct vec4_t b)
+vec4_t vecsub(vec4_t a, vec4_t b)
 {
-	struct vec4_t result;
+	vec4_t result;
 	result.x = a.x - b.x;
 	result.y = a.y - b.y;
 	result.z = a.z - b.z;
 	result.w = 1;
 	return result;
 }
-struct vec4_t normalize(struct vec4_t a)
+vec4_t normalize(vec4_t a)
 {
-	struct vec4_t normalized;
+	vec4_t normalized;
 	float l = sqrtf(a.x * a.x + a.y * a.y + a.z * a.z);
 	normalized.x = a.x / l;
 	normalized.y = a.y / l;
 	normalized.z = a.z / l;
 	return normalized;
 }
-struct vec4_t cross(struct vec4_t a, struct vec4_t b)
+vec4_t cross(vec4_t a, vec4_t b)
 {
-	struct vec4_t cp;
+	vec4_t cp;
 	cp.x = a.y * b.z - a.z * b.y;
 	cp.y = a.z * b.x - a.x * b.z;
 	cp.z = a.x * b.y - a.y * b.x;
 	return cp;
 }
 
-struct vec4_t calc_normal(struct vec4_t points3d[3])
+vec4_t calc_normal(vec4_t points3d[3])
 {
-	struct vec4_t normal, line[2];
+	vec4_t normal, line[2];
 	for (unsigned int i = 0; i < 2; i++)
 	{
 		line[i].x = points3d[i + 1].x - points3d[0].x;
@@ -298,23 +281,23 @@ struct vec4_t calc_normal(struct vec4_t points3d[3])
 	return (normal);
 }
 
-struct vec4_t vecmulfloat(struct vec4_t v, float f)
+vec4_t vecmulfloat(vec4_t v, float f)
 {
-	struct vec4_t a = {v.x * f, v.y * f, v.z * f, 1.0f};
+	vec4_t a = {v.x * f, v.y * f, v.z * f, 1.0f};
 	return a;
 }
 
 // uses lookat matrix
-void camerahandle(struct vec4_t cam, struct vec4_t target, struct vec4_t up, float mat4[4][4])
+void camerahandle(vec4_t cam, vec4_t target, vec4_t up, float mat4[4][4])
 {
 
 	up = normalize(up);
 
-	struct vec4_t zax = normalize(vecsub(cam, target));
+	vec4_t zax = normalize(vecsub(cam, target));
 
-	struct vec4_t xax = normalize(cross(up, zax));
+	vec4_t xax = normalize(cross(up, zax));
 
-	struct vec4_t yax = cross(zax, xax);
+	vec4_t yax = cross(zax, xax);
 
 	mat4[0][0] = xax.x;
 	mat4[0][1] = yax.x;
@@ -331,9 +314,9 @@ void camerahandle(struct vec4_t cam, struct vec4_t target, struct vec4_t up, flo
 	mat4[2][2] = zax.z;
 	mat4[2][3] = 0;
 
-	mat4[3][0] = -dp(xax, cam);
-	mat4[3][1] = -dp(yax, cam);
-	mat4[3][2] = -dp(zax, cam);
+	mat4[3][0] = -dot(xax, cam);
+	mat4[3][1] = -dot(yax, cam);
+	mat4[3][2] = -dot(zax, cam);
 	mat4[3][3] = 1.0f;
 }
 
@@ -358,16 +341,17 @@ void mat4xmat4(float a[4][4], float b[4][4], float out[4][4])
 	out[3][3] = a[0][3] * b[3][0] + a[1][3] * b[3][1] + a[2][3] * b[3][2] + a[3][0] * b[3][3];
 }
 
-bool checkpoints(struct vec4_t n[3], float projmat[4][4])
+bool checkpoints(vec4_t n[3], float projmat[4][4])
 {
 	for (int i = 0; i < 3; i++)
 	{
-		struct vec4_t b = mat4_mul_vec4(projmat, n[i]);
-		if (b.x >= -1.2f && b.x <= 1.2f)
+		vec4_t b = mat4_mul_vec4(projmat, n[i]);
+		if (b.x >= -1.0f && b.x <= 1.0f)
 		{
-			if (b.y >= -1.2f && b.y <= 1.2f)
+			if (b.y >= -1.0f && b.y <= 1.0f)
 			{
-				if(b.z >= 0.2f) return true;
+				if (b.z >= 0.1f)
+					return true;
 			}
 		}
 	}
@@ -375,11 +359,11 @@ bool checkpoints(struct vec4_t n[3], float projmat[4][4])
 }
 // Jesus christ
 
-int handle_triangles(unsigned int faces, SDL_Surface *frame, struct triangle tri[faces], float depthbuffer[SCREEN_HEIGHT][SCREEN_WIDTH], float projmat[4][4])
+int handle_triangle(SDL_Surface *frame, object_t **objects, float depthbuffer[SCREEN_HEIGHT][SCREEN_WIDTH], float projmat[4][4])
 {
 
 	float viewmatrix[4][4];
-	struct vec4_t target = {0, 0, 1, 1}, up = {0, 1, 0, 1};
+	vec4_t target = {0, 0, 1, 1}, up = {0, 1, 0, 1};
 	float yrot4[4][4] = {{{0.0f}}};
 	float xrot4[4][4] = {{{0.0f}}};
 	mat4_yrot_matrix(yaw, yrot4);
@@ -387,85 +371,68 @@ int handle_triangles(unsigned int faces, SDL_Surface *frame, struct triangle tri
 
 	lookdir = mat4_mul_vec4(yrot4, target);
 	lookdir = mat4_mul_vec4(xrot4, lookdir);
-
 	upv = mat4_mul_vec4(xrot4, up);
 	target = vecadd(lookdir, camera);
 	camerahandle(camera, target, upv, viewmatrix);
-	struct vec4_t p3d[3];
-	struct vec4_t p3do[3];
-
-	for (unsigned int face = 0; face < faces; face++)
+	vec4_t p3d[3];
+	vec4_t p3do[3];
+	for (unsigned int obj = 0; obj < objn; obj++)
 	{
-		// instead of rewriting the entire program to run with the new rendering method, i'll just convert the triangles points into individual 4D vectors to use with the older functions.
-		p3d[0] = vecadd(tri[face].p1, camera);
-		p3d[0] = mat4_mul_vec4(viewmatrix, p3d[0]);
-		p3d[1] = vecadd(tri[face].p2, camera);
-		p3d[1] = mat4_mul_vec4(viewmatrix, p3d[1]);
-		p3d[2] = vecadd(tri[face].p3, camera);
-		p3d[2] = mat4_mul_vec4(viewmatrix, p3d[2]);
-
-		p3do[0] = tri[face].p1;
-		p3do[1] = tri[face].p2;
-		p3do[2] = tri[face].p3;
-
-		struct vec4_t normal = calc_normal(p3do);
-
-		if (checkpoints(p3d, projmat) == true && dp(normal, vecadd(camera, p3do[0])) <= 0.0f)
+		for (int face = 0; face < objects[obj]->ifaces; face++)
 		{
-			struct vec4_t ld = {0.0f, 5.0f, 0.0f};
-			ld = normalize(ld);
-			float lum = normal.x * ld.x + normal.y * ld.y + normal.z * ld.z;
+			// instead of rewriting the entire program to run with the new rendering method, i'll just convert the triangle_ts points into individual 4D vectors to use with the older functions.
+			p3d[0] = vecadd(objects[obj]->faces[face].p1, camera);
 
-			int cl[3] = {255, 255, 255};
-			calc_color(lum, cl);
-			for (unsigned int i = 0; i < 3; i++)
+			p3d[0] = mat4_mul_vec4(viewmatrix, p3d[0]);
+			p3d[1] = vecadd(objects[obj]->faces[face].p2, camera);
+			p3d[1] = mat4_mul_vec4(viewmatrix, p3d[1]);
+			p3d[2] = vecadd(objects[obj]->faces[face].p3, camera);
+			p3d[2] = mat4_mul_vec4(viewmatrix, p3d[2]);
+
+			p3do[0] = objects[obj]->faces[face].p1;
+			p3do[1] = objects[obj]->faces[face].p2;
+			p3do[2] = objects[obj]->faces[face].p3;
+
+			vec4_t normal = calc_normal(p3do);
+
+			if (checkpoints(p3d, projmat) == true && dot(normal, vecadd(camera, p3do[0])) < 0.0f)
 			{
+				vec4_t ld = {0.0f, 5.0f, 0.0f};
+				ld = normalize(ld);
+				float lum = normal.x * ld.x + normal.y * ld.y + normal.z * ld.z;
 
-				p3d[i] = mat4_mul_vec4(projmat, p3d[i]);
-
-				p3d[i].x = p3d[i].x + 1.0f;
-				p3d[i].y = p3d[i].y + 1.0f;
-				p3d[i].x *= 0.5f * SCREEN_WIDTH;
-				p3d[i].y *= 0.5f * SCREEN_HEIGHT;
+				uint8_t cl[3] = {255, 255, 255};
+				calc_color(lum, cl);
+				for (unsigned int i = 0; i < 3; i++)
+				{
+					p3d[i] = mat4_mul_vec4(projmat, p3d[i]);
+					p3d[i].x = p3d[i].x + 1.0f;
+					p3d[i].y = p3d[i].y + 1.0f;
+					p3d[i].x *= 0.5f * SCREEN_WIDTH;
+					p3d[i].y *= 0.5f * SCREEN_HEIGHT;
+				}
+				Rasterize_Triangle(frame, p3d, cl, depthbuffer);
 			}
-			Rasterize_Triangle(frame, p3d, cl, depthbuffer);
 		}
 	}
+	return;
 }
 
-unsigned int mapfaces(char *path)
+object_t *obj_from_objfil(char *path)
 {
-	unsigned int n = 0;
+	int vi = 0, fi = 0;
+
+	vec4_t *vec = (vec4_t *)malloc(128);
+	vec3i_t *face = (vec3i_t *)malloc(12 * sizeof(vec3i_t));
 	char line[500];
-	FILE *file = fopen(path, "r");
-	if (file == NULL)
-	{
-		return 1;
-	}
-	while (fgets(line, sizeof(line), file))
-	{
-		char *string = line;
-		char *token;
-		char objectpath[512];
-		token = strtok(string, "|");
-
-		sprintf(objectpath, "%s", token + 2);
-
-		n += nlines_begin_with(objectpath, "f");
-	}
-	return n;
-}
-
-void tri_from_objfile(unsigned int faces, char *path, struct triangle tri[faces])
-{
-	unsigned int nvec = nlines_begin_with(path, "v");
-	int vi = 0, fi = 0, vni = 0;
-
-	struct vec4_t vec[nvec];
-	struct vec3i_t face[faces];
-	char line[500];
-
+	int recs = 0;
 	FILE *objfile = fopen(path, "r");
+	if (objfile == NULL)
+	{
+		fprintf(stderr, "Error occured with reading object file \"%s\"\n This Error happens usually when the file could not be found", path);
+		force_exit = true;
+		return;
+	}
 	while (fgets(line, sizeof(line), objfile))
 	{
 		char *str[2];
@@ -494,6 +461,12 @@ void tri_from_objfile(unsigned int faces, char *path, struct triangle tri[faces]
 						vec[vi].z = atof(token);
 						vi++;
 					}
+					if (vi > 8 + recs)
+					{
+						printf("vec reallocate\nVec iter %d\nVec size %d\n", vi, vi * sizeof(vec4_t));
+						vec = (vec4_t *)realloc(vec, vi++ * sizeof(vec4_t));
+						recs++;
+					}
 					vvi++;
 				}
 				token = strtok(NULL, delim);
@@ -501,6 +474,7 @@ void tri_from_objfile(unsigned int faces, char *path, struct triangle tri[faces]
 		}
 		else if (strcmp(str, "f") == 0)
 		{
+			recs = 0;
 			char *delim = " ";
 			int ffi = 0;
 			char *token = strtok(line, delim);
@@ -524,80 +498,131 @@ void tri_from_objfile(unsigned int faces, char *path, struct triangle tri[faces]
 						face[fi].z = n1;
 						fi++;
 					}
+					if (fi > 12 + recs)
+					{
+						printf("face reallocate\n");
+						face = (vec3i_t *)realloc(face, fi * sizeof(vec3i_t));
+						recs++;
+					}
 					ffi++;
 				}
 				token = strtok(NULL, delim);
 			}
 		}
 	}
+	object_t *obj = malloc(sizeof(object_t));
+	obj->faces = (triangle_t *)malloc(fi * sizeof(triangle_t));
 
-	for (unsigned int i = 0; i < faces; i++)
+	for (unsigned int i = 0; i < fi; i++)
 	{
-		tri[i].p1.x = vec[face[i].x].x;
-		tri[i].p1.y = vec[face[i].x].y;
-		tri[i].p1.z = vec[face[i].x].z;
-		tri[i].p2.x = vec[face[i].y].x;
-		tri[i].p2.y = vec[face[i].y].y;
-		tri[i].p2.z = vec[face[i].y].z;
-		tri[i].p3.x = vec[face[i].z].x;
-		tri[i].p3.y = vec[face[i].z].y;
-		tri[i].p3.z = vec[face[i].z].z;
-		tri[i].render = true;
+		obj->faces[i].p1.x = vec[face[i].x].x;
+		obj->faces[i].p1.y = vec[face[i].x].y;
+		obj->faces[i].p1.z = vec[face[i].x].z;
+		obj->faces[i].p2.x = vec[face[i].y].x;
+		obj->faces[i].p2.y = vec[face[i].y].y;
+		obj->faces[i].p2.z = vec[face[i].y].z;
+		obj->faces[i].p3.x = vec[face[i].z].x;
+		obj->faces[i].p3.y = vec[face[i].z].y;
+		obj->faces[i].p3.z = vec[face[i].z].z;
 	}
+	obj->ifaces = fi;
+	free(vec);
+	free(face);
+	printf("obj pointer %p\n", obj);
+	return obj;
 }
 
-void readmap(unsigned int faces, char *path, struct triangle tri[faces])
+unsigned int nlines_begin_with(char *filename, char *v)
 {
-	// line buffer
+	int n = 0;
 	char line[500];
-	unsigned int iter = 0;
+	FILE *file = fopen(filename, "r");
+	if (file == NULL)
+	{
+		return 1;
+	}
+	while (fgets(line, sizeof(line), file))
+	{
+		char string[500];
+		sprintf(string, "%.1s", line);
+		if (strcmp(string, v) == 0)
+		{
+			n++;
+		}
+	}
+	printf("%d\n", n);
+	return n;
+}
+
+void moveobj(object_t *obj, vec4_t offset)
+{
+	for (int face = 0; face < obj->ifaces; face++)
+	{
+		obj->faces[face].p1 = vecadd(obj->faces[face].p1, offset);
+		obj->faces[face].p2 = vecadd(obj->faces[face].p2, offset);
+		obj->faces[face].p3 = vecadd(obj->faces[face].p3, offset);
+	}
+	return;
+}
+
+object_t **addobj(char *path, object_t **objs)
+{
+	objn++;
+	objs = (object_t **)realloc(objs, objn * sizeof(object_t));
+	objs[objn - 1] = obj_from_objfil(path);;
+	moveobj(objs[objn - 1], camera);
+	return objs;
+}
+
+void readmap(char *path, object_t **objects)
+{
+
+	// this expects the map to be in
+	// o <objectfile>|g x y z format
+	char line[500];
 	FILE *file = fopen(path, "r");
 	while (fgets(line, sizeof(line), file))
 	{
+		char objectpath[512];
+		char *token;
+		char *linecpy = line;
+		token = strtok(linecpy, "|");
+		sprintf(objectpath, "%s", token + 2);
+
+		token = strtok(NULL, "|");
+		vec4_t goff;
+		char *goffbuf;
+		goffbuf = strtok(token, " ");
+		goffbuf = strtok(NULL, " ");
+		for (unsigned int i = 0; i < 3; i++)
 		{
-			char objectpath[512];
-			char *token;
-			char *linecpy = line;
-			int facet;
-			float x = 0, y = 0, z = 0;
-			token = strtok(linecpy, "|");
-			sprintf(objectpath, "%s", token + 2);
-			facet = nlines_begin_with(objectpath, "f");
-			struct triangle tribuf[facet];
-			token = strtok(NULL, "|");
-			char *goffbuf;
-			goffbuf = strtok(token, " ");
+			if (i == 0)
+			{
+				goff.x = atof(goffbuf);
+			}
+			else if (i == 1)
+			{
+				goff.y = atof(goffbuf);
+			}
+			else if (i == 2)
+			{
+				goff.z = atof(goffbuf);
+			}
 			goffbuf = strtok(NULL, " ");
-			for (unsigned int i = 0; i < 3; i++)
-			{
-				if (i == 0)
-				{
-					x = atof(goffbuf);
-				}
-				else if (i == 1)
-				{
-					y = atof(goffbuf);
-				}
-				else if (i == 2)
-				{
-					z = atof(goffbuf);
-				}
-				goffbuf = strtok(NULL, " ");
-			}
-			tri_from_objfile(facet, objectpath, tribuf);
-			for (unsigned int i = 0; i < facet; i++)
-			{
-				printf("iter %d | i %d\n", iter, i);
-				tri[iter] = applyoff(tribuf[i], x, y, z);
-				iter++;
-			}
+		}
+		for (unsigned int i = 0; i < objn; i++)
+		{
+			objects[i] = obj_from_objfil(objectpath);
+			printf("object out %p\nvalue of i %d\n", objects[i], i);
+			moveobj(objects[i], goff);
 		}
 	}
+	return;
 }
 
-struct vec4_t MoveTowards(struct vec4_t target)
+vec4_t MoveTowards(vec4_t target)
 {
-	struct vec4_t direction = {0.0f, 0.0f, 1.0f, 1};
+	vec4_t direction = {0.0f, 0.0f, 1.0f, 1};
 
 	direction = vecsub(camera, target);
 	direction = vecmulfloat(direction, speed);
@@ -605,22 +630,23 @@ struct vec4_t MoveTowards(struct vec4_t target)
 	camera.x -= direction.x;
 	camera.z += direction.z;
 }
-struct vec4_t MoveAway(struct vec4_t target)
+vec4_t MoveAway(vec4_t target)
 {
-	struct vec4_t direction = {0.0f, 0.0f, 1.0f, 1};
+	vec4_t direction = {0.0f, 0.0f, 1.0f, 1};
 
 	direction = vecsub(camera, target);
 	direction = vecmulfloat(direction, speed);
 	camera.x += direction.x;
 	camera.z -= direction.z;
+	return;
 }
-struct vec4_t moveside(struct vec4_t target, int d)
+vec4_t moveside(vec4_t target, int d)
 {
-	struct vec4_t direction = {0.0f, 0.0f, 0.0f, 1};
+	vec4_t direction = {0.0f, 0.0f, 0.0f, 1};
 	direction = vecsub(camera, target);
 	direction = normalize(direction);
 
-	struct vec4_t xax = normalize(cross(upv, direction));
+	vec4_t xax = normalize(cross(upv, direction));
 	// Speed modifier
 	direction = vecmulfloat(xax, speed);
 	if (d == 1)
@@ -633,6 +659,7 @@ struct vec4_t moveside(struct vec4_t target, int d)
 		camera.x += direction.x;
 		camera.z -= direction.z;
 	}
+	return;
 }
 
 int main(int argc, char *argv[])
@@ -644,13 +671,14 @@ int main(int argc, char *argv[])
 		camera.x = 0.0f;
 		camera.y = 0.0f;
 		camera.z = 0.0f;
-		unsigned int faces = mapfaces(argv[1]);
-		struct triangle triangles[faces];
-		readmap(faces, argv[1], triangles);
+		objn = nlines_begin_with(argv[1], "o");
+		object_t **objects = (object_t **)malloc(objn * sizeof(object_t));
+		readmap(argv[1], objects);
+		printf("arg 1 %s", argv[1]);
 		SDL_Init(SDL_INIT_EVERYTHING);
 		SDL_Window *wnd;
 		SDL_Event evn;
-		wnd = SDL_CreateWindow("BR_Engine tests", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+		wnd = SDL_CreateWindow("BR_Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 		SDL_Surface *frame = SDL_GetWindowSurface(wnd);
 		int x, y;
 		SDL_GetKeyboardFocus();
@@ -658,209 +686,216 @@ int main(int argc, char *argv[])
 		mat4_project_matrix(fov, aspr, znear, zfar, projmat);
 		// TODO add delta-time
 		//  Frame and input handler
-		printf("Triangles %d", sizeof(triangles) / sizeof(triangles[0]));
+		printf("Objects %d\n", objn);
 
 		double start_time = time(NULL);
-		for (;;)
+
+		if (force_exit == false)
 		{
-			float depthbuf[SCREEN_HEIGHT][SCREEN_WIDTH] = {5.0};
-			mat4_project_matrix(fov, aspr, znear, zfar, projmat);
-			if (SDL_PollEvent(&evn))
+			for (;;)
 			{
-				if (evn.type == SDL_QUIT)
-					break;
-				// TODO: add better keyboard handling
-				// Keyboard handling
-				if (evn.type == SDL_KEYDOWN)
+				float depthbuf[SCREEN_HEIGHT][SCREEN_WIDTH] = {5.0};
+				mat4_project_matrix(fov, aspr, znear, zfar, projmat);
+				if (SDL_PollEvent(&evn))
 				{
-					SDL_Keycode KEY = evn.key.keysym.sym;
-					// fix to handle multiple being pressed
-					if (KEY == SDLK_w)
+					if (evn.type == SDL_QUIT)
+						break;
+					// TODO: add better keyboard handling
+					// Keyboard handling
+					if (evn.type == SDL_KEYDOWN)
 					{
-						forward = true;
-					}
-					if (KEY == SDLK_s)
-					{
-						back = true;
-					}
-					if (KEY == SDLK_d)
-					{
-						left = true;
-					}
-					if (KEY == SDLK_a)
-					{
-						right = true;
-					}
-					if (KEY == SDLK_SPACE)
-					{
-						up = true;
-					}
-					if (KEY == SDLK_LCTRL)
-					{
-						down = true;
-					}
-					if (KEY == SDLK_LCTRL)
-					{
-						down = true;
-					}
+						SDL_Keycode KEY = evn.key.keysym.sym;
+						// fix to handle multiple being pressed
+						if (KEY == SDLK_w)
+						{
+							forward = true;
+						}
+						if (KEY == SDLK_s)
+						{
+							back = true;
+						}
+						if (KEY == SDLK_d)
+						{
+							left = true;
+						}
+						if (KEY == SDLK_a)
+						{
+							right = true;
+						}
+						if (KEY == SDLK_SPACE)
+						{
+							up = true;
+						}
+						if (KEY == SDLK_LCTRL)
+						{
+							down = true;
+						}
+						if (KEY == SDLK_LCTRL)
+						{
+							down = true;
+						}
 
-					if (KEY == SDLK_LCTRL)
-					{
-						down = true;
-					}
-					if (KEY == SDLK_LEFT)
-					{
-						lleft = true;
-					}
-					if (KEY == SDLK_RIGHT)
-					{
-						lright = true;
-					}
-					if (KEY == SDLK_UP)
-					{
-						lup = true;
-					}
-					if (KEY == SDLK_DOWN)
-					{
-						ldown = true;
-					}
+						if (KEY == SDLK_LCTRL)
+						{
+							down = true;
+						}
+						if (KEY == SDLK_LEFT)
+						{
+							lleft = true;
+						}
+						if (KEY == SDLK_RIGHT)
+						{
+							lright = true;
+						}
+						if (KEY == SDLK_UP)
+						{
+							lup = true;
+						}
+						if (KEY == SDLK_DOWN)
+						{
+							ldown = true;
+						}
 
-					if (pitch < -90)
-						pitch = -89.9f;
-					if (pitch > 90)
-						pitch = 89.9f;
-					if (yaw < 0.0f)
-						yaw = 360.0f;
-					if (yaw > 360.0f)
-						yaw = 0.0f;
+						if (pitch < -90)
+							pitch = -89.9f;
+						if (pitch > 90)
+							pitch = 89.9f;
+						if (yaw < 0.0f)
+							yaw = 360.0f;
+						if (yaw > 360.0f)
+							yaw = 0.0f;
 
-					if (KEY == SDLK_q)
-					{
-						fov -= 1.0f;
-					}
-					if (KEY == SDLK_e)
-					{
-						fov += 1.0f;
-					}
+						if (KEY == SDLK_q)
+						{
+							fov -= 1.0f;
+						}
+						if (KEY == SDLK_e)
+						{
+							fov += 1.0f;
+						}
 
-					if (forward)
-					{
-						MoveTowards(vecadd(lookdir, camera));
-					}
-					if (back)
-					{
-						MoveAway(vecadd(lookdir, camera));
-					}
+						if (forward)
+						{
+							MoveTowards(vecadd(lookdir, camera));
+						}
+						if (back)
+						{
+							MoveAway(vecadd(lookdir, camera));
+						}
 
-					if (left)
-					{
-						moveside(vecadd(lookdir, camera), 0);
-					}
+						if (left)
+						{
+							moveside(vecadd(lookdir, camera), 0);
+						}
 
-					if (right)
-					{
-						moveside(vecadd(lookdir, camera), 1);
-					}
-					if (up)
-					{
-						camera.y += 0.1f;
-					}
-					if (down)
-					{
-						camera.y -= 0.1f;
-					}
+						if (right)
+						{
+							moveside(vecadd(lookdir, camera), 1);
+						}
+						if (up)
+						{
+							camera.y += 0.1f;
+						}
+						if (down)
+						{
+							camera.y -= 0.1f;
+						}
 
-					if (lleft)
-					{
-						yaw += 2.0f;
-					}
+						if (lleft)
+						{
+							yaw += 2.0f;
+						}
 
-					if (lright)
-					{
-						yaw -= 2.0f;
+						if (lright)
+						{
+							yaw -= 2.0f;
+						}
+						if (lup)
+						{
+							pitch -= 2.0f;
+						}
+						if (ldown)
+						{
+							pitch += 1.0f;
+						}
 					}
-					if (lup)
+					if (evn.type == SDL_KEYUP)
 					{
-						pitch -= 2.0f;
-					}
-					if (ldown)
-					{
-						pitch += 1.0f;
+
+						SDL_Keycode KEY = evn.key.keysym.sym;
+						if (KEY == SDLK_w)
+						{
+							forward = false;
+						}
+
+						if (KEY == SDLK_s)
+						{
+							back = false;
+						}
+
+						if (KEY == SDLK_d)
+						{
+							left = false;
+						}
+
+						if (KEY == SDLK_a)
+						{
+							right = false;
+						}
+						if (KEY == SDLK_SPACE)
+						{
+							up = false;
+						}
+						if (KEY == SDLK_LCTRL)
+						{
+							down = false;
+						}
+
+						if (KEY == SDLK_LEFT)
+						{
+							lleft = false;
+						}
+						if (KEY == SDLK_c)
+							objects = addobj("./test_objects/cube.obj", objects);
+						if (KEY == SDLK_RIGHT)
+						{
+							lright = false;
+						}
+						if (KEY == SDLK_UP)
+						{
+							lup = false;
+						}
+						if (KEY == SDLK_DOWN)
+						{
+							ldown = false;
+						}
 					}
 				}
-				if (evn.type == SDL_KEYUP)
+				SDL_FillRect(frame, NULL, SDL_MapRGB(frame->format, 0, 0, 0));
+				SDL_LockSurface(frame);
+				handle_triangle(frame, objects, depthbuf, projmat);
+				SDL_UnlockSurface(frame);
+				SDL_UpdateWindowSurface(wnd);
+
+				framecount++;
+				double curtime = time(NULL);
+				if (curtime - start_time >= 1.000000)
 				{
-
-					SDL_Keycode KEY = evn.key.keysym.sym;
-					if (KEY == SDLK_w)
-					{
-						forward = false;
-					}
-
-					if (KEY == SDLK_s)
-					{
-						back = false;
-					}
-
-					if (KEY == SDLK_d)
-					{
-						left = false;
-					}
-
-					if (KEY == SDLK_a)
-					{
-						right = false;
-					}
-					if (KEY == SDLK_SPACE)
-					{
-						up = false;
-					}
-					if (KEY == SDLK_LCTRL)
-					{
-						down = false;
-					}
-
-					if (KEY == SDLK_LEFT)
-					{
-						lleft = false;
-					}
-
-					if (KEY == SDLK_RIGHT)
-					{
-						lright = false;
-					}
-					if (KEY == SDLK_UP)
-					{
-						lup = false;
-					}
-					if (KEY == SDLK_DOWN)
-					{
-						ldown = false;
-					}
+					printf("%d fps\n", framecount);
+					start_time = curtime;
+					framecount = 0;
 				}
 			}
 
-			SDL_FillRect(frame, NULL, SDL_MapRGB(frame->format, 0, 0, 0));
-			SDL_LockSurface(frame);
-
-			handle_triangles(faces, frame, triangles, depthbuf, projmat);
-
-			SDL_UnlockSurface(frame);
-
-			SDL_UpdateWindowSurface(wnd);
-
-			framecount++;
-			double curtime = time(NULL);
-			if (curtime - start_time >= 1.000000)
-			{
-				printf("%d fps \n", framecount);
-				start_time = curtime;
-				framecount = 0;
-			}
+			SDL_DestroyWindow(wnd);
+			SDL_Quit();
 		}
-
-		SDL_DestroyWindow(wnd);
-		SDL_Quit();
+		else
+		{
+			SDL_DestroyWindow(wnd);
+			SDL_Quit();
+			return 51;
+		}
 	}
 	else
 	{
