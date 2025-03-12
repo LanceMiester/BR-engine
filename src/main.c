@@ -483,7 +483,6 @@ int handle_triangle(SDL_Surface *frame, object_t **objects, float depthbuffer[SC
 					p3d[i].y *= 0.5f * SCREEN_HEIGHT;
 				}
 				Rasterize_Triangle(frame, p3d, textures[objects[obj]->faces[face].texiter], objects[obj]->faces[face].tp, depthbuffer, lum);
-				// printf("Time took to process Triangle %d \n", ptime - ctime);
 			}
 		}
 	}
@@ -651,19 +650,16 @@ tex *load_tex_file(char *path, object_t *object)
 	{
 		printf("failed %s\n", path);
 		exit(-1);
-		//		return SDL_CreateRGBSurface(0, 16, 16, 8, 0, 0, 0, 0);
 	}
 	char line[500];
 	fgets(line, sizeof(line), f);
 	char pathf[500];
 	sscanf(line, "%s", pathf);
-	// printf("Path = %s\n", pathf);
 	int face_iter = 0;
 	while (fgets(line, sizeof(line), f))
 	{
 		char *linecpy = line;
 		unsigned int p1 = 1, p2 = 1, p3 = 1, p4 = 1, p5 = 1, p6 = 1;
-		// printf("line %s\n", line);
 		sscanf(linecpy, "f %d %d %d %d %d %d", &p1, &p2, &p3, &p4, &p5, &p6);
 		object->faces[face_iter].tp[0].x = p1;
 		object->faces[face_iter].tp[0].y = p2;
@@ -671,7 +667,6 @@ tex *load_tex_file(char *path, object_t *object)
 		object->faces[face_iter].tp[1].y = p4;
 		object->faces[face_iter].tp[2].x = p5;
 		object->faces[face_iter].tp[2].y = p6;
-		// printf("parsing line\n%s\n", linecpy);
 		object->faces[face_iter].texiter = texn;
 		face_iter++;
 	}
@@ -791,7 +786,7 @@ int main(int argc, char *argv[])
 		objn = nlines_begin_with(argv[1], "o");
 		object_t **objects = (object_t **)malloc(objn * sizeof(object_t));
 		tex **textures = (SDL_Surface **)malloc(objn * sizeof(tex));
-		readmap("/root/BR-3D-Engine/map_files/map1.map", objects, textures);
+		readmap(argv[1], objects, textures);
 		// printf("arg 1 %s\n", argv[1]);
 		SDL_Init(SDL_INIT_EVERYTHING);
 		SDL_Window *wnd;
