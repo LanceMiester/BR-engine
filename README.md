@@ -18,12 +18,13 @@ planning to add more features as I go on.
 - [x] Fully implementing the Z-Buffer
 - [x] Make personal Rasterizer
 - [x] Objects to contain triangles and texture data
-- [ ] Textures
+- [x] Textures
 - [ ] Transparency
-- [ ] Add the ability to pipe object data into the renderer
+- [x] Add the ability to pipe object data into the renderer
 - [ ] Reflectons
 - [ ] Advanced lighting and shading.
 - [ ] Optimize this terrible code
+- [x] Cry in corner for a while
 
 
 

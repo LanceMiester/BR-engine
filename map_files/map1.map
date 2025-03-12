@@ -1,1 +1,1 @@
-o ./test_objects/miku.obj|g 0.0000 0.0000 5.0000
+o ./test_objects/cube.obj|g 0.0000 0.0000 5.0000 t ./textures/cube.tex 
